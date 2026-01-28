@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Layout } from '@/components/layout/Layout';
-import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,9 +33,12 @@ import {
   Edit,
   Bell,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Sun,
+  Cloud,
+  Wheat
 } from 'lucide-react';
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isToday } from 'date-fns';
+import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isToday, getDay, startOfWeek, endOfWeek, addDays, isSameMonth } from 'date-fns';
 import { CropEvent } from '@/lib/types';
 
 const eventTypeConfig = {
@@ -284,30 +286,97 @@ export default function CalendarPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
-                  month={currentMonth}
-                  onMonthChange={setCurrentMonth}
-                  className="rounded-md"
-                  modifiers={{
-                    hasEvent: getDaysWithEvents(),
-                  }}
-                  modifiersStyles={{
-                    hasEvent: {
-                      fontWeight: 'bold',
-                      textDecoration: 'underline',
-                      textDecorationColor: 'hsl(var(--primary))',
-                    },
-                  }}
-                />
+                {/* Custom Calendar Grid with Icons */}
+                <div className="space-y-4">
+                  {/* Day headers */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                      <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Calendar days */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {(() => {
+                      const monthStart = startOfMonth(currentMonth);
+                      const monthEnd = endOfMonth(currentMonth);
+                      const startDate = startOfWeek(monthStart);
+                      const endDate = endOfWeek(monthEnd);
+                      
+                      const days = [];
+                      let day = startDate;
+                      
+                      while (day <= endDate) {
+                        const currentDay = day;
+                        const dayEvents = events.filter(e => isSameDay(new Date(e.date), currentDay));
+                        const isCurrentMonth = isSameMonth(currentDay, currentMonth);
+                        const isSelected = isSameDay(currentDay, selectedDate);
+                        const isTodayDate = isToday(currentDay);
+                        
+                        days.push(
+                          <button
+                            key={currentDay.toISOString()}
+                            onClick={() => setSelectedDate(currentDay)}
+                            className={`
+                              relative min-h-[70px] p-1 rounded-lg border transition-all duration-200 hover:shadow-md
+                              ${isCurrentMonth ? 'bg-card' : 'bg-muted/30'}
+                              ${isSelected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border/50'}
+                              ${isTodayDate ? 'bg-primary/5' : ''}
+                              hover:border-primary/50
+                            `}
+                          >
+                            <div className={`
+                              text-sm font-medium mb-1
+                              ${!isCurrentMonth ? 'text-muted-foreground/50' : ''}
+                              ${isSelected ? 'text-primary' : ''}
+                              ${isTodayDate ? 'text-primary font-bold' : ''}
+                            `}>
+                              {format(currentDay, 'd')}
+                            </div>
+                            
+                            {/* Event icons */}
+                            {dayEvents.length > 0 && (
+                              <div className="flex flex-wrap gap-0.5 justify-center">
+                                {[...new Set(dayEvents.map(e => e.eventType))].slice(0, 3).map((type, idx) => {
+                                  const config = eventTypeConfig[type];
+                                  const Icon = config.icon;
+                                  return (
+                                    <div 
+                                      key={idx} 
+                                      className={`${config.color} rounded-sm p-0.5`}
+                                      title={config.label}
+                                    >
+                                      <Icon className="h-3 w-3 text-white" />
+                                    </div>
+                                  );
+                                })}
+                                {dayEvents.length > 3 && (
+                                  <span className="text-[10px] text-muted-foreground font-medium">
+                                    +{dayEvents.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </button>
+                        );
+                        
+                        day = addDays(day, 1);
+                      }
+                      
+                      return days;
+                    })()}
+                  </div>
+                </div>
                 
                 {/* Event Legend */}
                 <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t">
                   {Object.entries(eventTypeConfig).map(([key, config]) => (
                     <div key={key} className="flex items-center gap-2 text-sm">
-                      <div className={`w-3 h-3 rounded-full ${config.color}`} />
+                      <div className={`p-1 rounded ${config.color}`}>
+                        <config.icon className="h-3 w-3 text-white" />
+                      </div>
                       <span>{config.label}</span>
                     </div>
                   ))}

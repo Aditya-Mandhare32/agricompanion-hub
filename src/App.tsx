@@ -10,6 +10,7 @@ import Signup from "./pages/Signup";
 import SoilReport from "./pages/SoilReport";
 import Crops from "./pages/Crops";
 import CalendarPage from "./pages/CalendarPage";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/soil-report" element={<SoilReport />} />
             <Route path="/crops" element={<Crops />} />
             <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

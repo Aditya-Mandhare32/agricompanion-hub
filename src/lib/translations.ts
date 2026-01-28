@@ -123,6 +123,7 @@ export const translations = {
     noData: 'No data available',
     success: 'Success',
     error: 'Error',
+    loginRequired: 'Login Required',
   },
   hi: {
     // Navigation
@@ -246,6 +247,7 @@ export const translations = {
     noData: 'कोई डेटा उपलब्ध नहीं',
     success: 'सफलता',
     error: 'त्रुटि',
+    loginRequired: 'लॉगिन आवश्यक',
   },
   mr: {
     // Navigation
@@ -369,6 +371,7 @@ export const translations = {
     noData: 'कोणताही डेटा उपलब्ध नाही',
     success: 'यश',
     error: 'त्रुटी',
+    loginRequired: 'लॉगिन आवश्यक',
   },
 };
 

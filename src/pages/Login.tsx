@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useApp } from '@/context/AppContext';
-import { Leaf, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Leaf, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 export default function Login() {
-  const { t, login } = useApp();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -19,23 +19,20 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username || !password) {
+    if (!email || !password) {
       toast.error('Please fill in all fields');
       return;
     }
     
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const { error } = await signIn(email, password);
     
-    const success = login(username, password);
-    
-    if (success) {
+    if (error) {
+      toast.error(error.message || 'Invalid email or password');
+    } else {
       toast.success('Welcome back!');
       navigate('/');
-    } else {
-      toast.error('Invalid username or password');
     }
     
     setIsLoading(false);
@@ -56,28 +53,28 @@ export default function Login() {
 
         {/* Login Card */}
         <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
-          <h1 className="text-2xl font-bold text-center mb-2">{t('welcomeBack')}</h1>
+          <h1 className="text-2xl font-bold text-center mb-2">Welcome Back</h1>
           <p className="text-muted-foreground text-center mb-6">
             Sign in to access your farming dashboard
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username */}
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="username">{t('username')}</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
                 className="input-field"
               />
             </div>
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password">{t('password')}</Label>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -103,26 +100,20 @@ export default function Login() {
               className="w-full btn-primary"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing in...' : t('login')}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Signing in...
+                </>
+              ) : 'Sign In'}
             </Button>
           </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-muted/50 rounded-xl">
-            <p className="text-sm font-medium mb-2">Demo Credentials:</p>
-            <p className="text-sm text-muted-foreground">
-              Username: <code className="bg-muted px-1 rounded">demo</code>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Password: <code className="bg-muted px-1 rounded">demo123</code>
-            </p>
-          </div>
 
           {/* Sign Up Link */}
           <p className="text-center mt-6 text-sm text-muted-foreground">
             Don't have an account?{' '}
             <Link to="/signup" className="text-primary font-medium hover:underline">
-              {t('signup')}
+              Sign Up
             </Link>
           </p>
         </div>

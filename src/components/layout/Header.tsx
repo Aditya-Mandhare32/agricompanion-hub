@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   Menu, 
   X, 
@@ -29,18 +30,19 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navItems = [
   { path: '/', label: 'home', icon: Leaf },
   { path: '/soil-report', label: 'soilReport', icon: FileText },
-  { path: '/crops', label: 'crops', icon: Sprout },
   { path: '/calendar', label: 'calendar', icon: Calendar },
   { path: '/community', label: 'community', icon: Users },
   { path: '/news', label: 'news', icon: Newspaper },
 ];
 
 export function Header() {
-  const { isAuthenticated, user, logout, t, language, setLanguage, unreadCount, notifications, markNotificationRead } = useApp();
+  const { t, language, setLanguage, unreadCount, notifications, markNotificationRead } = useApp();
+  const { user, profile, signOut } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -101,8 +103,15 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {isAuthenticated ? (
+          {user ? (
             <>
+              {/* Messages Link */}
+              <Button variant="ghost" size="icon" asChild className="hidden sm:flex">
+                <Link to="/messages">
+                  <MessageCircle className="h-5 w-5" />
+                </Link>
+              </Button>
+
               {/* Notifications */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -140,17 +149,16 @@ export function Header() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
-                    <img
-                      src={user?.avatar}
-                      alt={user?.username}
-                      className="h-8 w-8 rounded-full"
-                    />
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={profile?.avatar_url} />
+                      <AvatarFallback>{profile?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <div className="px-2 py-1.5">
-                    <p className="font-medium">{user?.username}</p>
-                    <p className="text-sm text-muted-foreground">{user?.location}</p>
+                    <p className="font-medium">{profile?.username}</p>
+                    <p className="text-sm text-muted-foreground">{profile?.location}</p>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -159,8 +167,14 @@ export function Header() {
                       {t('profile')}
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/messages" className="flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4" />
+                      Messages
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="text-destructive">
+                  <DropdownMenuItem onClick={() => signOut()} className="text-destructive">
                     <LogOut className="h-4 w-4 mr-2" />
                     {t('logout')}
                   </DropdownMenuItem>
@@ -219,7 +233,7 @@ export function Header() {
                     ))}
                   </div>
                 </div>
-                {!isAuthenticated && (
+                {!user && (
                   <>
                     <div className="border-t my-4" />
                     <Link

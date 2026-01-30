@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useApp } from '@/context/AppContext';
-import { Leaf, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Leaf, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,16 +15,16 @@ import {
 import { toast } from 'sonner';
 
 export default function Signup() {
-  const { t, signup, setLanguage } = useApp();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
     username: '',
-    phone: '',
+    email: '',
     password: '',
     confirmPassword: '',
     location: '',
-    accountType: 'farmer' as const,
+    accountType: 'farmer',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +37,7 @@ export default function Signup() {
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.username || !formData.phone || !formData.password) {
+    if (!formData.username || !formData.email || !formData.password) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -60,22 +60,13 @@ export default function Signup() {
     
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const { error } = await signUp(formData.email, formData.password, formData.username);
     
-    const success = signup({
-      username: formData.username,
-      phone: formData.phone,
-      password: formData.password,
-      location: formData.location,
-      accountType: formData.accountType,
-    });
-    
-    if (success) {
-      toast.success('Account created successfully!');
-      navigate('/');
+    if (error) {
+      toast.error(error.message || 'Failed to create account');
     } else {
-      toast.error('Username already taken');
+      toast.success('Account created successfully! You can now sign in.');
+      navigate('/login');
     }
     
     setIsLoading(false);
@@ -96,7 +87,7 @@ export default function Signup() {
 
         {/* Signup Card */}
         <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
-          <h1 className="text-2xl font-bold text-center mb-2">{t('createAccount')}</h1>
+          <h1 className="text-2xl font-bold text-center mb-2">Create Account</h1>
           <p className="text-muted-foreground text-center mb-6">
             Join thousands of farmers using Agri360
           </p>
@@ -112,7 +103,7 @@ export default function Signup() {
             <form onSubmit={handleStep1} className="space-y-4">
               {/* Username */}
               <div className="space-y-2">
-                <Label htmlFor="username">{t('username')} *</Label>
+                <Label htmlFor="username">Username *</Label>
                 <Input
                   id="username"
                   type="text"
@@ -123,22 +114,22 @@ export default function Signup() {
                 />
               </div>
 
-              {/* Phone */}
+              {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="phone">{t('phoneNumber')} *</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleChange('phone', e.target.value)}
-                  placeholder="+91 9876543210"
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  placeholder="your@email.com"
                   className="input-field"
                 />
               </div>
 
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password">{t('password')} *</Label>
+                <Label htmlFor="password">Password *</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -160,7 +151,7 @@ export default function Signup() {
 
               {/* Confirm Password */}
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">{t('confirmPassword')} *</Label>
+                <Label htmlFor="confirmPassword">Confirm Password *</Label>
                 <Input
                   id="confirmPassword"
                   type={showPassword ? 'text' : 'password'}
@@ -193,7 +184,7 @@ export default function Signup() {
 
               {/* Account Type */}
               <div className="space-y-2">
-                <Label htmlFor="accountType">{t('accountType')}</Label>
+                <Label htmlFor="accountType">Account Type</Label>
                 <Select
                   value={formData.accountType}
                   onValueChange={(value) => handleChange('accountType', value)}
@@ -202,35 +193,12 @@ export default function Signup() {
                     <SelectValue placeholder="Select account type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="farmer">{t('farmer')}</SelectItem>
-                    <SelectItem value="agribusiness">{t('agribusiness')}</SelectItem>
-                    <SelectItem value="student">{t('student')}</SelectItem>
-                    <SelectItem value="agronomist">{t('agronomist')}</SelectItem>
+                    <SelectItem value="farmer">Farmer</SelectItem>
+                    <SelectItem value="agribusiness">Agribusiness</SelectItem>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="agronomist">Agronomist</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Language */}
-              <div className="space-y-2">
-                <Label>{t('language')}</Label>
-                <div className="flex gap-2">
-                  {[
-                    { code: 'en', label: 'English' },
-                    { code: 'hi', label: 'हिंदी' },
-                    { code: 'mr', label: 'मराठी' },
-                  ].map((lang) => (
-                    <Button
-                      key={lang.code}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setLanguage(lang.code as any)}
-                    >
-                      {lang.label}
-                    </Button>
-                  ))}
-                </div>
               </div>
 
               {/* Buttons */}
@@ -248,7 +216,12 @@ export default function Signup() {
                   className="flex-1 btn-primary"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Creating...' : t('signup')}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : 'Sign Up'}
                 </Button>
               </div>
             </form>
@@ -258,7 +231,7 @@ export default function Signup() {
           <p className="text-center mt-6 text-sm text-muted-foreground">
             Already have an account?{' '}
             <Link to="/login" className="text-primary font-medium hover:underline">
-              {t('login')}
+              Sign In
             </Link>
           </p>
         </div>

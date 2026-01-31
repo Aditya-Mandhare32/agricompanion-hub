@@ -4,6 +4,7 @@ import { Layout } from '@/components/layout/Layout';
 import { useApp } from '@/context/AppContext';
 import { SoilData } from '@/lib/types';
 import { simulateOcrExtraction } from '@/lib/cropRecommendationEngine';
+import { FertilizerTable } from '@/components/soil/FertilizerTable';
 import { 
   Upload, 
   Camera, 
@@ -393,6 +394,13 @@ export default function SoilReport() {
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </div>
+            </div>
+          )}
+
+          {/* Fertilizer Recommendations Table */}
+          {soilParams && (
+            <div className="mt-8">
+              <FertilizerTable soilData={soilParams} />
             </div>
           )}
 

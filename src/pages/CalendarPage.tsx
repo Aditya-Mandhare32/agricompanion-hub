@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -20,14 +20,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@/components/ui/hover-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, 
   Sprout, 
@@ -39,36 +34,26 @@ import {
   Trash2,
   Edit,
   Bell,
-  ChevronLeft,
-  ChevronRight,
   Download,
   Layers,
   LayoutList,
   Clock,
   MapPin,
   Leaf,
-  TrendingUp,
-  ExternalLink
+  TrendingUp
 } from 'lucide-react';
 import { 
   format, 
   isSameDay, 
-  startOfMonth, 
-  endOfMonth, 
-  addMonths, 
-  subMonths, 
-  isToday, 
-  startOfWeek, 
-  endOfWeek, 
   addDays, 
-  isSameMonth,
-  differenceInDays,
-  isWithinInterval,
-  parseISO
+  differenceInDays
 } from 'date-fns';
 import { CropEvent } from '@/lib/types';
-import { sampleCrops, cropColorPalette, getSuggestedPlantingWindow, exportAsIcs, SampleCrop } from '@/lib/sampleCrops';
+import { sampleCrops, getSuggestedPlantingWindow, exportAsIcs } from '@/lib/sampleCrops';
 import { farmerNewsData, categoryConfig } from '@/lib/farmerNews';
+import { MonthGridView } from '@/components/calendar/MonthGridView';
+import { TimelineView } from '@/components/calendar/TimelineView';
+import { CropCycleEditDialog } from '@/components/calendar/CropCycleEditDialog';
 
 // Crop cycle type for tracking multiple crops
 interface CropCycle {
@@ -133,6 +118,7 @@ export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<'month' | 'timeline'>('month');
   const [cropCycles, setCropCycles] = useState<CropCycle[]>([]);
   const [isAddCycleDialogOpen, setIsAddCycleDialogOpen] = useState(false);
+  const [editingCycle, setEditingCycle] = useState<CropCycle | null>(null);
   const [selectedRegion, setSelectedRegion] = useState('Maharashtra');
   
   const [newEvent, setNewEvent] = useState({
@@ -235,6 +221,10 @@ export default function CalendarPage() {
     setCropCycles(cropCycles.filter(c => c.id !== id));
   };
 
+  const updateCropCycle = (cycle: CropCycle) => {
+    setCropCycles(cropCycles.map(c => c.id === cycle.id ? cycle : c));
+  };
+
   const handleExportCalendar = () => {
     const icsContent = exportAsIcs(events);
     const blob = new Blob([icsContent], { type: 'text/calendar' });
@@ -252,12 +242,6 @@ export default function CalendarPage() {
 
   const getEventsForDate = (date: Date) => {
     return events.filter(event => isSameDay(new Date(event.date), date));
-  };
-
-  const getCropCyclesForDate = (date: Date) => {
-    return cropCycles.filter(cycle => 
-      isWithinInterval(date, { start: cycle.startDate, end: cycle.endDate })
-    );
   };
 
   const selectedDateEvents = getEventsForDate(selectedDate);
@@ -515,322 +499,24 @@ export default function CalendarPage() {
           {/* Main Calendar Section */}
           <div className="lg:col-span-2 space-y-6">
             {viewMode === 'month' ? (
-              <Card className="shadow-lg">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <CalendarIcon className="h-5 w-5 text-primary" />
-                      {format(currentMonth, 'MMMM yyyy')}
-                    </CardTitle>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {/* Calendar Grid */}
-                  <div className="space-y-4">
-                    {/* Day headers */}
-                    <div className="grid grid-cols-7 gap-1">
-                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                        <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
-                          {day}
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Calendar days with crop cycle blocks */}
-                    <div className="grid grid-cols-7 gap-1">
-                      {(() => {
-                        const monthStart = startOfMonth(currentMonth);
-                        const monthEnd = endOfMonth(currentMonth);
-                        const startDate = startOfWeek(monthStart);
-                        const endDate = endOfWeek(monthEnd);
-                        
-                        const days = [];
-                        let day = startDate;
-                        
-                        while (day <= endDate) {
-                          const currentDay = day;
-                          const dayEvents = events.filter(e => isSameDay(new Date(e.date), currentDay));
-                          const dayCycles = getCropCyclesForDate(currentDay);
-                          const isCurrentMonth = isSameMonth(currentDay, currentMonth);
-                          const isSelected = isSameDay(currentDay, selectedDate);
-                          const isTodayDate = isToday(currentDay);
-                          
-                          days.push(
-                            <HoverCard key={currentDay.toISOString()}>
-                              <HoverCardTrigger asChild>
-                                <button
-                                  onClick={() => setSelectedDate(currentDay)}
-                                  className={`
-                                    relative min-h-[80px] p-1 rounded-lg border transition-all duration-200 hover:shadow-md
-                                    ${isCurrentMonth ? 'bg-card' : 'bg-muted/30'}
-                                    ${isSelected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border/50'}
-                                    ${isTodayDate ? 'bg-primary/5' : ''}
-                                    hover:border-primary/50
-                                  `}
-                                >
-                                  <div className={`
-                                    text-sm font-medium mb-1
-                                    ${!isCurrentMonth ? 'text-muted-foreground/50' : ''}
-                                    ${isSelected ? 'text-primary' : ''}
-                                    ${isTodayDate ? 'text-primary font-bold' : ''}
-                                  `}>
-                                    {format(currentDay, 'd')}
-                                  </div>
-                                  
-                                  {/* Crop cycle blocks */}
-                                  {dayCycles.length > 0 && (
-                                    <div className="space-y-0.5 mb-1">
-                                      {dayCycles.slice(0, 2).map((cycle, idx) => (
-                                        <div 
-                                          key={idx}
-                                          className="text-[9px] px-1 py-0.5 rounded truncate font-medium text-white"
-                                          style={{ backgroundColor: cycle.color }}
-                                        >
-                                          {cycle.cropName}
-                                        </div>
-                                      ))}
-                                      {dayCycles.length > 2 && (
-                                        <span className="text-[9px] text-muted-foreground">
-                                          +{dayCycles.length - 2}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                  
-                                  {/* Event icons */}
-                                  {dayEvents.length > 0 && (
-                                    <div className="flex flex-wrap gap-0.5 justify-center">
-                                      {[...new Set(dayEvents.map(e => e.eventType))].slice(0, 3).map((type, idx) => {
-                                        const config = eventTypeConfig[type];
-                                        const Icon = config.icon;
-                                        return (
-                                          <div 
-                                            key={idx} 
-                                            className={`${config.color} rounded-sm p-0.5`}
-                                            title={config.label}
-                                          >
-                                            <Icon className="h-2.5 w-2.5 text-white" />
-                                          </div>
-                                        );
-                                      })}
-                                      {dayEvents.length > 3 && (
-                                        <span className="text-[9px] text-muted-foreground font-medium">
-                                          +{dayEvents.length - 3}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                </button>
-                              </HoverCardTrigger>
-                              <HoverCardContent className="w-72">
-                                <div className="space-y-3">
-                                  <div className="font-semibold">
-                                    {format(currentDay, 'EEEE, MMMM d, yyyy')}
-                                  </div>
-                                  
-                                  {dayCycles.length > 0 && (
-                                    <div>
-                                      <p className="text-xs font-medium text-muted-foreground mb-2">Active Crops:</p>
-                                      {dayCycles.map((cycle, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 text-sm mb-1">
-                                          <div 
-                                            className="w-3 h-3 rounded-full"
-                                            style={{ backgroundColor: cycle.color }}
-                                          />
-                                          <span>{cycle.cropName}</span>
-                                          <span className="text-xs text-muted-foreground">({cycle.region})</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  
-                                  {dayEvents.length > 0 && (
-                                    <div>
-                                      <p className="text-xs font-medium text-muted-foreground mb-2">Events:</p>
-                                      {dayEvents.map((event, idx) => {
-                                        const config = eventTypeConfig[event.eventType];
-                                        const Icon = config.icon;
-                                        return (
-                                          <div key={idx} className="flex items-center gap-2 text-sm mb-1">
-                                            <Icon className={`h-3 w-3 ${config.textColor}`} />
-                                            <span>{event.cropName} - {config.label}</span>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                  
-                                  {dayCycles.length === 0 && dayEvents.length === 0 && (
-                                    <p className="text-sm text-muted-foreground">No activities scheduled</p>
-                                  )}
-                                </div>
-                              </HoverCardContent>
-                            </HoverCard>
-                          );
-                          
-                          day = addDays(day, 1);
-                        }
-                        
-                        return days;
-                      })()}
-                    </div>
-                  </div>
-                  
-                  {/* Legend */}
-                  <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t">
-                    {Object.entries(eventTypeConfig).map(([key, config]) => (
-                      <div key={key} className="flex items-center gap-2 text-sm">
-                        <div className={`p-1 rounded ${config.color}`}>
-                          <config.icon className="h-3 w-3 text-white" />
-                        </div>
-                        <span>{config.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <MonthGridView
+                currentMonth={currentMonth}
+                selectedDate={selectedDate}
+                events={events}
+                cropCycles={cropCycles}
+                onMonthChange={setCurrentMonth}
+                onDateSelect={setSelectedDate}
+                onCycleClick={(cycle) => setEditingCycle(cycle)}
+              />
             ) : (
-              /* Timeline View */
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <LayoutList className="h-5 w-5 text-primary" />
-                    Timeline View
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[500px]">
-                    <div className="space-y-4 pr-4">
-                      {/* Active Crop Cycles */}
-                      {cropCycles.length > 0 && (
-                        <div className="mb-6">
-                          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Active Crop Cycles</h3>
-                          {cropCycles.map((cycle) => {
-                            const progress = Math.min(100, Math.max(0,
-                              (differenceInDays(new Date(), cycle.startDate) / 
-                               differenceInDays(cycle.endDate, cycle.startDate)) * 100
-                            ));
-                            return (
-                              <div key={cycle.id} className="mb-4 p-4 rounded-lg border bg-card">
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <div 
-                                      className="w-4 h-4 rounded-full"
-                                      style={{ backgroundColor: cycle.color }}
-                                    />
-                                    <span className="font-medium">{cycle.cropName}</span>
-                                    <Badge variant="outline" className="text-xs">
-                                      <MapPin className="h-3 w-3 mr-1" />
-                                      {cycle.region}
-                                    </Badge>
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive"
-                                    onClick={() => deleteCropCycle(cycle.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                                <div className="text-xs text-muted-foreground mb-2">
-                                  {format(cycle.startDate, 'MMM d')} → {format(cycle.endDate, 'MMM d, yyyy')}
-                                </div>
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full rounded-full transition-all"
-                                    style={{ 
-                                      width: `${progress}%`,
-                                      backgroundColor: cycle.color
-                                    }}
-                                  />
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1 text-right">
-                                  {Math.round(progress)}% complete
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Events Timeline */}
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-3">Upcoming Events</h3>
-                      {events
-                        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                        .map((event) => {
-                          const config = eventTypeConfig[event.eventType];
-                          const Icon = config.icon;
-                          return (
-                            <div 
-                              key={event.id}
-                              className={`flex items-start gap-4 p-3 rounded-lg border ${config.bgLight}`}
-                            >
-                              <div className={`p-2 rounded-lg ${config.color} text-white`}>
-                                <Icon className="h-4 w-4" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <h4 className="font-medium">{event.cropName}</h4>
-                                  <Badge variant="outline" className={config.textColor}>
-                                    {config.label}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  {format(new Date(event.date), 'EEEE, MMMM d, yyyy')}
-                                </p>
-                                {event.notes && (
-                                  <p className="text-sm mt-1">{event.notes}</p>
-                                )}
-                              </div>
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => setEditingEvent(event)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive"
-                                  onClick={() => deleteEvent(event.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      
-                      {events.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                          <p>No events scheduled yet</p>
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+              <TimelineView
+                events={events}
+                cropCycles={cropCycles}
+                onCycleClick={(cycle) => setEditingCycle(cycle)}
+                onCycleDelete={deleteCropCycle}
+                onEventEdit={setEditingEvent}
+                onEventDelete={deleteEvent}
+              />
             )}
 
             {/* Selected Date Events */}
@@ -1228,6 +914,16 @@ export default function CalendarPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Crop Cycle Dialog */}
+      <CropCycleEditDialog
+        cycle={editingCycle}
+        isOpen={!!editingCycle}
+        onClose={() => setEditingCycle(null)}
+        onSave={updateCropCycle}
+        onDelete={deleteCropCycle}
+        regions={regions}
+      />
     </Layout>
   );
 }

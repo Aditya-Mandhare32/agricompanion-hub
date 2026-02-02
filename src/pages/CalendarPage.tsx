@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +42,10 @@ import {
   Clock,
   MapPin,
   Leaf,
-  TrendingUp
+  TrendingUp,
+  ShoppingCart,
+  LogIn,
+  Loader2
 } from 'lucide-react';
 import { 
   format, 
@@ -50,10 +55,10 @@ import {
 } from 'date-fns';
 import { CropEvent } from '@/lib/types';
 import { sampleCrops, getSuggestedPlantingWindow, exportAsIcs } from '@/lib/sampleCrops';
-import { farmerNewsData, categoryConfig } from '@/lib/farmerNews';
 import { MonthGridView } from '@/components/calendar/MonthGridView';
 import { TimelineView } from '@/components/calendar/TimelineView';
 import { CropCycleEditDialog } from '@/components/calendar/CropCycleEditDialog';
+import { ShopSection } from '@/components/calendar/ShopSection';
 
 // Crop cycle type for tracking multiple crops
 interface CropCycle {
@@ -110,7 +115,10 @@ const regions = [
 ];
 
 export default function CalendarPage() {
-  const { t, events, addEvent, updateEvent, deleteEvent, isAuthenticated, language } = useApp();
+  const { t, events, addEvent, updateEvent, deleteEvent, language } = useApp();
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -120,6 +128,7 @@ export default function CalendarPage() {
   const [isAddCycleDialogOpen, setIsAddCycleDialogOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<CropCycle | null>(null);
   const [selectedRegion, setSelectedRegion] = useState('Maharashtra');
+  const [isShopOpen, setIsShopOpen] = useState(false);
   
   const [newEvent, setNewEvent] = useState({
     cropName: '',
@@ -134,6 +143,14 @@ export default function CalendarPage() {
     region: 'Maharashtra',
     notes: '',
   });
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      sessionStorage.setItem('redirectAfterLogin', '/calendar');
+      navigate('/login', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   // Load crop cycles from localStorage
   useEffect(() => {
@@ -251,32 +268,32 @@ export default function CalendarPage() {
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5);
 
-  // Get news item text based on language
-  const getNewsText = (item: typeof farmerNewsData[0], field: 'title' | 'summary') => {
-    if (language === 'hi') {
-      return field === 'title' ? (item.titleHi || item.title) : (item.summaryHi || item.summary);
-    } else if (language === 'mr') {
-      return field === 'title' ? (item.titleMr || item.title) : (item.summaryMr || item.summary);
-    }
-    return field === 'title' ? item.title : item.summary;
-  };
+  // Show loading state
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
 
-  const getCategoryLabel = (category: keyof typeof categoryConfig) => {
-    const config = categoryConfig[category];
-    if (language === 'hi') return config.labelHi;
-    if (language === 'mr') return config.labelMr;
-    return config.label;
-  };
-
-  if (!isAuthenticated) {
+  // Show login prompt if not authenticated
+  if (!user) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-20 text-center">
           <CalendarIcon className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-2">{t('loginRequired')}</h1>
-          <p className="text-muted-foreground mb-6">Please login to access the crop calendar</p>
-          <Button asChild>
-            <a href="/login">{t('login')}</a>
+          <p className="text-muted-foreground mb-6">
+            {language === 'hi' ? 'कैलेंडर देखने के लिए लॉगिन करें' : 
+             language === 'mr' ? 'कॅलेंडर पाहण्यासाठी लॉगिन करा' : 
+             'Please login to access the crop calendar'}
+          </p>
+          <Button onClick={() => navigate('/login')}>
+            <LogIn className="h-4 w-4 mr-2" />
+            {t('login')}
           </Button>
         </div>
       </Layout>
@@ -301,7 +318,9 @@ export default function CalendarPage() {
                 {t('smartCalendar')}
               </h1>
               <p className="text-white/80">
-                Plan and track all your farming activities with smart reminders
+                {language === 'hi' ? 'स्मार्ट रिमाइंडर के साथ अपनी खेती गतिविधियों की योजना बनाएं' : 
+                 language === 'mr' ? 'स्मार्ट स्मरणपत्रांसह तुमच्या शेती क्रियाकलापांचे नियोजन करा' :
+                 'Plan and track all your farming activities with smart reminders'}
               </p>
             </div>
             <div className="flex gap-3">
@@ -309,22 +328,22 @@ export default function CalendarPage() {
                 <DialogTrigger asChild>
                   <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
                     <Layers className="h-5 w-5 mr-2" />
-                    Add Crop Cycle
+                    {language === 'hi' ? 'फसल चक्र जोड़ें' : language === 'mr' ? 'पीक चक्र जोडा' : 'Add Crop Cycle'}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Add Crop Cycle</DialogTitle>
+                    <DialogTitle>{language === 'hi' ? 'फसल चक्र जोड़ें' : language === 'mr' ? 'पीक चक्र जोडा' : 'Add Crop Cycle'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
                     <div>
-                      <Label>Select Crop</Label>
+                      <Label>{language === 'hi' ? 'फसल चुनें' : language === 'mr' ? 'पीक निवडा' : 'Select Crop'}</Label>
                       <Select 
                         value={newCycle.cropId} 
                         onValueChange={(v) => setNewCycle({ ...newCycle, cropId: v })}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Choose a crop" />
+                          <SelectValue placeholder={language === 'hi' ? 'एक फसल चुनें' : language === 'mr' ? 'एक पीक निवडा' : 'Choose a crop'} />
                         </SelectTrigger>
                         <SelectContent>
                           {sampleCrops.map(crop => (
@@ -348,13 +367,13 @@ export default function CalendarPage() {
                           {getSuggestedPlantingWindow(newCycle.cropId, newCycle.region).suggestion}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Duration: {sampleCrops.find(c => c.id === newCycle.cropId)?.growthDurationDays} days
+                          {language === 'hi' ? 'अवधि:' : language === 'mr' ? 'कालावधी:' : 'Duration:'} {sampleCrops.find(c => c.id === newCycle.cropId)?.growthDurationDays} {language === 'hi' ? 'दिन' : language === 'mr' ? 'दिवस' : 'days'}
                         </p>
                       </div>
                     )}
 
                     <div>
-                      <Label>Region</Label>
+                      <Label>{language === 'hi' ? 'क्षेत्र' : language === 'mr' ? 'प्रदेश' : 'Region'}</Label>
                       <Select 
                         value={newCycle.region} 
                         onValueChange={(v) => setNewCycle({ ...newCycle, region: v })}
@@ -371,7 +390,7 @@ export default function CalendarPage() {
                     </div>
 
                     <div>
-                      <Label>Start Date</Label>
+                      <Label>{language === 'hi' ? 'आरंभ तिथि' : language === 'mr' ? 'सुरुवात तारीख' : 'Start Date'}</Label>
                       <Input 
                         type="date" 
                         value={format(newCycle.startDate, 'yyyy-MM-dd')}
@@ -380,9 +399,9 @@ export default function CalendarPage() {
                     </div>
 
                     <div>
-                      <Label>Notes (Optional)</Label>
+                      <Label>{language === 'hi' ? 'नोट्स (वैकल्पिक)' : language === 'mr' ? 'टिपा (पर्यायी)' : 'Notes (Optional)'}</Label>
                       <Textarea 
-                        placeholder="Add any notes..."
+                        placeholder={language === 'hi' ? 'कोई भी नोट जोड़ें...' : language === 'mr' ? 'कोणत्याही टिपा जोडा...' : 'Add any notes...'}
                         value={newCycle.notes}
                         onChange={(e) => setNewCycle({ ...newCycle, notes: e.target.value })}
                       />
@@ -390,7 +409,7 @@ export default function CalendarPage() {
 
                     <Button onClick={handleAddCropCycle} className="w-full" disabled={!newCycle.cropId}>
                       <Layers className="h-4 w-4 mr-2" />
-                      Add Crop Cycle
+                      {language === 'hi' ? 'फसल चक्र जोड़ें' : language === 'mr' ? 'पीक चक्र जोडा' : 'Add Crop Cycle'}
                     </Button>
                   </div>
                 </DialogContent>
@@ -400,22 +419,22 @@ export default function CalendarPage() {
                 <DialogTrigger asChild>
                   <Button size="lg" className="bg-white text-primary hover:bg-white/90 shadow-lg">
                     <Plus className="h-5 w-5 mr-2" />
-                    Add Event
+                    {language === 'hi' ? 'इवेंट जोड़ें' : language === 'mr' ? 'इव्हेंट जोडा' : 'Add Event'}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Add New Farming Event</DialogTitle>
+                    <DialogTitle>{language === 'hi' ? 'नया खेती इवेंट जोड़ें' : language === 'mr' ? 'नवीन शेती इव्हेंट जोडा' : 'Add New Farming Event'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
                     <div>
-                      <Label>Crop Name</Label>
+                      <Label>{language === 'hi' ? 'फसल का नाम' : language === 'mr' ? 'पीकाचे नाव' : 'Crop Name'}</Label>
                       <Select 
                         value={newEvent.cropName} 
                         onValueChange={(v) => setNewEvent({ ...newEvent, cropName: v })}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select crop" />
+                          <SelectValue placeholder={language === 'hi' ? 'फसल चुनें' : language === 'mr' ? 'पीक निवडा' : 'Select crop'} />
                         </SelectTrigger>
                         <SelectContent>
                           {cropsList.map(crop => (
@@ -425,7 +444,7 @@ export default function CalendarPage() {
                       </Select>
                     </div>
                     <div>
-                      <Label>Event Type</Label>
+                      <Label>{language === 'hi' ? 'इवेंट प्रकार' : language === 'mr' ? 'इव्हेंट प्रकार' : 'Event Type'}</Label>
                       <Select 
                         value={newEvent.eventType} 
                         onValueChange={(v) => setNewEvent({ ...newEvent, eventType: v as CropEvent['eventType'] })}
@@ -446,7 +465,7 @@ export default function CalendarPage() {
                       </Select>
                     </div>
                     <div>
-                      <Label>Date</Label>
+                      <Label>{language === 'hi' ? 'तारीख' : language === 'mr' ? 'तारीख' : 'Date'}</Label>
                       <Input 
                         type="date" 
                         value={format(newEvent.date, 'yyyy-MM-dd')}
@@ -454,16 +473,16 @@ export default function CalendarPage() {
                       />
                     </div>
                     <div>
-                      <Label>Notes (Optional)</Label>
+                      <Label>{language === 'hi' ? 'नोट्स (वैकल्पिक)' : language === 'mr' ? 'टिपा (पर्यायी)' : 'Notes (Optional)'}</Label>
                       <Textarea 
-                        placeholder="Add any notes about this event..."
+                        placeholder={language === 'hi' ? 'इस इवेंट के बारे में कोई भी नोट जोड़ें...' : language === 'mr' ? 'या इव्हेंट बद्दल कोणत्याही टिपा जोडा...' : 'Add any notes about this event...'}
                         value={newEvent.notes}
                         onChange={(e) => setNewEvent({ ...newEvent, notes: e.target.value })}
                       />
                     </div>
                     <Button onClick={handleAddEvent} className="w-full">
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Event
+                      {language === 'hi' ? 'इवेंट जोड़ें' : language === 'mr' ? 'इव्हेंट जोडा' : 'Add Event'}
                     </Button>
                   </div>
                 </DialogContent>
@@ -474,24 +493,35 @@ export default function CalendarPage() {
       </section>
 
       <div className="container mx-auto px-4 py-8">
-        {/* View Toggle & Export */}
+        {/* View Toggle, Shop & Export */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'month' | 'timeline')}>
-            <TabsList>
-              <TabsTrigger value="month" className="flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                Month View
-              </TabsTrigger>
-              <TabsTrigger value="timeline" className="flex items-center gap-2">
-                <LayoutList className="h-4 w-4" />
-                Timeline
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-3">
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'month' | 'timeline')}>
+              <TabsList>
+                <TabsTrigger value="month" className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {language === 'hi' ? 'माह दृश्य' : language === 'mr' ? 'महिना दृश्य' : 'Month View'}
+                </TabsTrigger>
+                <TabsTrigger value="timeline" className="flex items-center gap-2">
+                  <LayoutList className="h-4 w-4" />
+                  {language === 'hi' ? 'टाइमलाइन' : language === 'mr' ? 'टाइमलाइन' : 'Timeline'}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <Button 
+              variant="outline" 
+              onClick={() => setIsShopOpen(true)}
+              className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              {language === 'hi' ? 'दुकान' : language === 'mr' ? 'दुकान' : 'Shop'}
+            </Button>
+          </div>
           
           <Button variant="outline" onClick={handleExportCalendar}>
             <Download className="h-4 w-4 mr-2" />
-            Export Calendar
+            {language === 'hi' ? 'निर्यात करें' : language === 'mr' ? 'निर्यात करा' : 'Export Calendar'}
           </Button>
         </div>
 
@@ -524,7 +554,7 @@ export default function CalendarPage() {
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <span className="text-lg">Events for</span>
+                    <span className="text-lg">{language === 'hi' ? 'इस दिन के इवेंट' : language === 'mr' ? 'या दिवसाचे इव्हेंट' : 'Events for'}</span>
                     <Badge variant="secondary" className="text-base font-normal">
                       {format(selectedDate, 'EEEE, MMMM d, yyyy')}
                     </Badge>
@@ -534,7 +564,7 @@ export default function CalendarPage() {
                   {selectedDateEvents.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>No events scheduled for this day</p>
+                      <p>{language === 'hi' ? 'इस दिन कोई इवेंट निर्धारित नहीं' : language === 'mr' ? 'या दिवशी कोणताही इव्हेंट नियोजित नाही' : 'No events scheduled for this day'}</p>
                       <Button 
                         variant="outline" 
                         className="mt-4"
@@ -544,7 +574,7 @@ export default function CalendarPage() {
                         }}
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Add Event
+                        {language === 'hi' ? 'इवेंट जोड़ें' : language === 'mr' ? 'इव्हेंट जोडा' : 'Add Event'}
                       </Button>
                     </div>
                   ) : (
@@ -616,22 +646,22 @@ export default function CalendarPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Layers className="h-5 w-5 text-primary" />
-                  Multi-Crop Management
+                  {language === 'hi' ? 'बहु-फसल प्रबंधन' : language === 'mr' ? 'बहु-पीक व्यवस्थापन' : 'Multi-Crop Management'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {cropCycles.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Leaf className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No crop cycles added yet</p>
-                    <p className="text-sm mt-1">Add crop cycles to manage multiple crops simultaneously</p>
+                    <p>{language === 'hi' ? 'कोई फसल चक्र नहीं जोड़ा गया' : language === 'mr' ? 'कोणतेही पीक चक्र जोडलेले नाही' : 'No crop cycles added yet'}</p>
+                    <p className="text-sm mt-1">{language === 'hi' ? 'एक साथ कई फसलों का प्रबंधन करने के लिए फसल चक्र जोड़ें' : language === 'mr' ? 'एकाच वेळी अनेक पिकांचे व्यवस्थापन करण्यासाठी पीक चक्र जोडा' : 'Add crop cycles to manage multiple crops simultaneously'}</p>
                     <Button 
                       variant="outline" 
                       className="mt-4"
                       onClick={() => setIsAddCycleDialogOpen(true)}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add First Crop Cycle
+                      {language === 'hi' ? 'पहला फसल चक्र जोड़ें' : language === 'mr' ? 'पहिले पीक चक्र जोडा' : 'Add First Crop Cycle'}
                     </Button>
                   </div>
                 ) : (
@@ -669,9 +699,9 @@ export default function CalendarPage() {
                                 <div className="flex items-center gap-2 text-sm mt-1">
                                   <Clock className="h-3 w-3" />
                                   {daysRemaining > 0 ? (
-                                    <span className="text-primary">{daysRemaining} days to harvest</span>
+                                    <span className="text-primary">{daysRemaining} {language === 'hi' ? 'दिन बाकी' : language === 'mr' ? 'दिवस बाकी' : 'days to harvest'}</span>
                                   ) : (
-                                    <span className="text-emerald-600">Ready for harvest!</span>
+                                    <span className="text-emerald-600">{language === 'hi' ? 'कटाई के लिए तैयार!' : language === 'mr' ? 'कापणीसाठी तयार!' : 'Ready for harvest!'}</span>
                                   )}
                                 </div>
                                 {crop && (
@@ -701,7 +731,7 @@ export default function CalendarPage() {
             {/* Quick Stats */}
             <Card className="shadow-lg bg-gradient-to-br from-primary/5 to-secondary/5">
               <CardHeader>
-                <CardTitle className="text-lg">Activity Summary</CardTitle>
+                <CardTitle className="text-lg">{language === 'hi' ? 'गतिविधि सारांश' : language === 'mr' ? 'क्रियाकलाप सारांश' : 'Activity Summary'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
@@ -727,13 +757,13 @@ export default function CalendarPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Bell className="h-5 w-5 text-primary" />
-                  Upcoming Reminders
+                  {language === 'hi' ? 'आगामी रिमाइंडर' : language === 'mr' ? 'आगामी स्मरणपत्रे' : 'Upcoming Reminders'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {upcomingEvents.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">
-                    No upcoming events
+                    {language === 'hi' ? 'कोई आगामी इवेंट नहीं' : language === 'mr' ? 'कोणतेही आगामी इव्हेंट नाही' : 'No upcoming events'}
                   </p>
                 ) : (
                   <div className="space-y-3">
@@ -771,7 +801,7 @@ export default function CalendarPage() {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-primary" />
-                  Crop Colors
+                  {language === 'hi' ? 'फसल रंग' : language === 'mr' ? 'पीक रंग' : 'Crop Colors'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -790,73 +820,18 @@ export default function CalendarPage() {
             </Card>
           </div>
         </div>
-
-        {/* Live Farmer News Section */}
-        <section className="mt-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              📰 {language === 'hi' ? 'किसान समाचार' : language === 'mr' ? 'शेतकरी बातम्या' : 'Farmer News'}
-            </h2>
-            <Badge variant="outline" className="animate-pulse">
-              <span className="w-2 h-2 bg-red-500 rounded-full inline-block mr-2"></span>
-              LIVE
-            </Badge>
-          </div>
-          
-          <ScrollArea className="w-full">
-            <div className="flex gap-4 pb-4" style={{ width: 'max-content' }}>
-              {farmerNewsData.map((news) => {
-                const catConfig = categoryConfig[news.category];
-                return (
-                  <Card 
-                    key={news.id} 
-                    className="w-[320px] flex-shrink-0 hover:shadow-lg transition-shadow cursor-pointer group"
-                  >
-                    <div className="relative">
-                      <img 
-                        src={news.image} 
-                        alt={news.title}
-                        className="w-full h-40 object-cover rounded-t-lg"
-                      />
-                      <Badge 
-                        className={`absolute top-3 left-3 ${catConfig.color} text-white`}
-                      >
-                        {catConfig.icon} {getCategoryLabel(news.category)}
-                      </Badge>
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
-                        {getNewsText(news, 'title')}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                        {getNewsText(news, 'summary')}
-                      </p>
-                      <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
-                        <span>{news.source}</span>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-3 w-3" />
-                          {news.readTime} min read
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </section>
       </div>
 
       {/* Edit Event Dialog */}
       <Dialog open={!!editingEvent} onOpenChange={() => setEditingEvent(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Event</DialogTitle>
+            <DialogTitle>{language === 'hi' ? 'इवेंट संपादित करें' : language === 'mr' ? 'इव्हेंट संपादित करा' : 'Edit Event'}</DialogTitle>
           </DialogHeader>
           {editingEvent && (
             <div className="space-y-4 mt-4">
               <div>
-                <Label>Crop Name</Label>
+                <Label>{language === 'hi' ? 'फसल का नाम' : language === 'mr' ? 'पीकाचे नाव' : 'Crop Name'}</Label>
                 <Select 
                   value={editingEvent.cropName} 
                   onValueChange={(v) => setEditingEvent({ ...editingEvent, cropName: v })}
@@ -872,7 +847,7 @@ export default function CalendarPage() {
                 </Select>
               </div>
               <div>
-                <Label>Event Type</Label>
+                <Label>{language === 'hi' ? 'इवेंट प्रकार' : language === 'mr' ? 'इव्हेंट प्रकार' : 'Event Type'}</Label>
                 <Select 
                   value={editingEvent.eventType} 
                   onValueChange={(v) => setEditingEvent({ ...editingEvent, eventType: v as CropEvent['eventType'] })}
@@ -893,7 +868,7 @@ export default function CalendarPage() {
                 </Select>
               </div>
               <div>
-                <Label>Date</Label>
+                <Label>{language === 'hi' ? 'तारीख' : language === 'mr' ? 'तारीख' : 'Date'}</Label>
                 <Input 
                   type="date" 
                   value={format(new Date(editingEvent.date), 'yyyy-MM-dd')}
@@ -901,21 +876,32 @@ export default function CalendarPage() {
                 />
               </div>
               <div>
-                <Label>Notes</Label>
+                <Label>{language === 'hi' ? 'नोट्स' : language === 'mr' ? 'टिपा' : 'Notes'}</Label>
                 <Textarea 
                   value={editingEvent.notes || ''}
                   onChange={(e) => setEditingEvent({ ...editingEvent, notes: e.target.value })}
                 />
               </div>
-              <Button onClick={handleUpdateEvent} className="w-full">
-                Save Changes
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleUpdateEvent} className="flex-1">
+                  {language === 'hi' ? 'अपडेट करें' : language === 'mr' ? 'अपडेट करा' : 'Update Event'}
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => {
+                    deleteEvent(editingEvent.id);
+                    setEditingEvent(null);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Edit Crop Cycle Dialog */}
+      {/* Crop Cycle Edit Dialog */}
       <CropCycleEditDialog
         cycle={editingCycle}
         isOpen={!!editingCycle}
@@ -924,6 +910,9 @@ export default function CalendarPage() {
         onDelete={deleteCropCycle}
         regions={regions}
       />
+
+      {/* Shop Section */}
+      <ShopSection isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} />
     </Layout>
   );
 }

@@ -1,10 +1,14 @@
-import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/hooks/useAuth';
 import { SoilData } from '@/lib/types';
 import { simulateOcrExtraction } from '@/lib/cropRecommendationEngine';
 import { FertilizerTable } from '@/components/soil/FertilizerTable';
+import { SoilHealthScore } from '@/components/soil/SoilHealthScore';
+import { AIAnalysisSection } from '@/components/soil/AIAnalysisSection';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Upload, 
   Camera, 
@@ -12,11 +16,16 @@ import {
   CheckCircle, 
   AlertCircle,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  LogIn
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -26,15 +35,52 @@ import {
 } from "@/components/ui/select";
 import { toast } from 'sonner';
 
+interface AIAnalysis {
+  healthScore: number;
+  healthStatus: string;
+  summary: string;
+  nutrientAnalysis: {
+    nitrogen: { status: string; explanation: string };
+    phosphorus: { status: string; explanation: string };
+    potassium: { status: string; explanation: string };
+  };
+  insights: string[];
+  cropRecommendations: Array<{
+    crop: string;
+    suitability: string;
+    expectedYield: string;
+    confidence: number;
+  }>;
+  fertilizerRecommendations: {
+    chemical: Array<{ name: string; dosage: string; timing?: string }>;
+    organic: Array<{ name: string; dosage: string; benefit?: string }>;
+  };
+  recoveryGuidance: Array<{ issue: string; solution: string; timeline: string }>;
+}
+
 export default function SoilReport() {
-  const { t, setSoilData, isAuthenticated } = useApp();
+  const { t, setSoilData, language } = useApp();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
   const [soilParams, setSoilParams] = useState<SoilData | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesisUtterance | null>(null);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      sessionStorage.setItem('redirectAfterLogin', location.pathname);
+      navigate('/login', { replace: true });
+    }
+  }, [user, authLoading, navigate, location.pathname]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -93,6 +139,77 @@ export default function SoilReport() {
     setIsAnalyzing(false);
     
     toast.success('Soil report analyzed successfully!');
+    
+    // Automatically run AI analysis
+    runAIAnalysis(extractedData);
+  };
+
+  const runAIAnalysis = async (data: SoilData) => {
+    setIsAIAnalyzing(true);
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke('analyze-soil', {
+        body: { soilData: data, language },
+      });
+
+      if (error) {
+        console.error('AI analysis error:', error);
+        toast.error('AI analysis failed. Using basic analysis.');
+        return;
+      }
+
+      setAiAnalysis(result);
+      toast.success(language === 'hi' ? 'AI विश्लेषण पूर्ण!' : language === 'mr' ? 'AI विश्लेषण पूर्ण!' : 'AI analysis complete!');
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      toast.error('Failed to run AI analysis');
+    } finally {
+      setIsAIAnalyzing(false);
+    }
+  };
+
+  const handleVoiceExplanation = async () => {
+    if (isSpeaking && speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    if (!aiAnalysis) {
+      toast.error('Please run AI analysis first');
+      return;
+    }
+
+    try {
+      // Generate spoken text using edge function
+      const { data, error } = await supabase.functions.invoke('soil-tts', {
+        body: { 
+          text: `${aiAnalysis.summary}. Your soil health score is ${aiAnalysis.healthScore} out of 100, which is ${aiAnalysis.healthStatus}. ${aiAnalysis.insights.join('. ')}`,
+          language 
+        },
+      });
+
+      if (error) throw error;
+
+      // Use browser's speech synthesis
+      const utterance = new SpeechSynthesisUtterance(data.spokenText);
+      
+      // Set language
+      if (language === 'hi') utterance.lang = 'hi-IN';
+      else if (language === 'mr') utterance.lang = 'mr-IN';
+      else utterance.lang = 'en-US';
+
+      utterance.rate = 0.9;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+
+      setSpeechSynthesis(utterance);
+      setIsSpeaking(true);
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('TTS error:', error);
+      toast.error('Voice explanation failed');
+    }
   };
 
   const updateSoilParam = (key: keyof SoilData, value: string | number) => {
@@ -114,6 +231,36 @@ export default function SoilReport() {
   // Validation helper
   const isValidPh = soilParams && soilParams.ph >= 0 && soilParams.ph <= 14;
 
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-20 text-center">
+          <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold mb-2">{t('loginRequired')}</h1>
+          <p className="text-muted-foreground mb-6">
+            {language === 'hi' ? 'मिट्टी विश्लेषण के लिए लॉगिन करें' : language === 'mr' ? 'माती विश्लेषणासाठी लॉगिन करा' : 'Please login to access soil analysis'}
+          </p>
+          <Button onClick={() => navigate('/login')}>
+            <LogIn className="h-4 w-4 mr-2" />
+            {t('login')}
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -122,7 +269,9 @@ export default function SoilReport() {
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-2">{t('soilReport')}</h1>
             <p className="text-muted-foreground">
-              Upload your soil test report and get AI-powered crop recommendations
+              {language === 'hi' ? 'AI-संचालित मिट्टी विश्लेषण और फसल सिफारिशें' : 
+               language === 'mr' ? 'AI-संचालित माती विश्लेषण आणि पीक शिफारसी' :
+               'AI-powered soil analysis and crop recommendations'}
             </p>
           </div>
 
@@ -163,7 +312,9 @@ export default function SoilReport() {
                     )}
                     <p className="text-sm text-muted-foreground">
                       <CheckCircle className="h-4 w-4 inline mr-1 text-primary" />
-                      File uploaded successfully
+                      {language === 'hi' ? 'फ़ाइल सफलतापूर्वक अपलोड हुई' : 
+                       language === 'mr' ? 'फाइल यशस्वीरित्या अपलोड झाली' :
+                       'File uploaded successfully'}
                     </p>
                   </div>
                 ) : (
@@ -212,8 +363,10 @@ export default function SoilReport() {
                       </>
                     ) : (
                       <>
-                        <FileText className="h-5 w-5 mr-2" />
-                        {t('runOcr')}
+                        <Sparkles className="h-5 w-5 mr-2" />
+                        {language === 'hi' ? 'AI विश्लेषण चलाएं' : 
+                         language === 'mr' ? 'AI विश्लेषण चालवा' :
+                         'Run AI Analysis'}
                       </>
                     )}
                   </Button>
@@ -222,21 +375,88 @@ export default function SoilReport() {
             </div>
           )}
 
+          {/* AI Analysis Loading */}
+          {isAIAnalyzing && (
+            <Card className="mb-8 border-primary/20 bg-primary/5">
+              <CardContent className="py-8 text-center">
+                <Sparkles className="h-12 w-12 mx-auto text-primary mb-4 animate-pulse" />
+                <h3 className="text-lg font-semibold mb-2">
+                  {language === 'hi' ? 'AI विश्लेषण चल रहा है...' : 
+                   language === 'mr' ? 'AI विश्लेषण सुरू आहे...' :
+                   'AI Analysis in Progress...'}
+                </h3>
+                <p className="text-muted-foreground">
+                  {language === 'hi' ? 'कृपया प्रतीक्षा करें' : 
+                   language === 'mr' ? 'कृपया प्रतीक्षा करा' :
+                   'Please wait while we analyze your soil data'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* AI Analysis Results */}
+          {aiAnalysis && soilParams && (
+            <div className="space-y-6 mb-8">
+              {/* Voice Explanation Button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={handleVoiceExplanation}
+                  className={isSpeaking ? 'bg-primary text-primary-foreground' : ''}
+                >
+                  {isSpeaking ? (
+                    <>
+                      <VolumeX className="h-4 w-4 mr-2" />
+                      {language === 'hi' ? 'रोकें' : language === 'mr' ? 'थांबवा' : 'Stop'}
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="h-4 w-4 mr-2" />
+                      {language === 'hi' ? 'सुनें' : language === 'mr' ? 'ऐका' : 'Listen to Report'}
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Soil Health Score */}
+              <SoilHealthScore 
+                score={aiAnalysis.healthScore} 
+                status={aiAnalysis.healthStatus}
+                language={language}
+              />
+
+              {/* AI Analysis Section */}
+              <AIAnalysisSection analysis={aiAnalysis} language={language} />
+            </div>
+          )}
+
           {/* Soil Parameters Form */}
           {soilParams && (
             <div className="bg-card rounded-2xl shadow-lg border border-border p-6 md:p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold">{t('soilParameters')}</h2>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => {
-                    setSoilParams(null);
-                    setFile(null);
-                    setPreview(null);
-                  }}
-                >
-                  Upload New
-                </Button>
+                <div className="flex gap-2">
+                  {!aiAnalysis && !isAIAnalyzing && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => runAIAnalysis(soilParams)}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {language === 'hi' ? 'AI विश्लेषण' : language === 'mr' ? 'AI विश्लेषण' : 'Run AI Analysis'}
+                    </Button>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => {
+                      setSoilParams(null);
+                      setAiAnalysis(null);
+                      setFile(null);
+                      setPreview(null);
+                    }}
+                  >
+                    {language === 'hi' ? 'नया अपलोड' : language === 'mr' ? 'नवीन अपलोड' : 'Upload New'}
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -403,15 +623,6 @@ export default function SoilReport() {
               <FertilizerTable soilData={soilParams} />
             </div>
           )}
-
-          {/* API Placeholder Note */}
-          <div className="mt-8 p-4 bg-muted/50 rounded-xl text-sm text-muted-foreground">
-            <p className="font-medium mb-2">🔧 API Integration Note:</p>
-            <p>
-              In production, replace <code className="bg-muted px-1 rounded">simulateOcrExtraction()</code> with 
-              actual API call: <code className="bg-muted px-1 rounded">POST /api/ocr</code>
-            </p>
-          </div>
         </div>
       </div>
     </Layout>

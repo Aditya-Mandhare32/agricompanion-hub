@@ -32,7 +32,14 @@ export default function Login() {
       toast.error(error.message || 'Invalid email or password');
     } else {
       toast.success('Welcome back!');
-      navigate('/');
+      // Check for redirect URL
+      const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(redirectUrl);
+      } else {
+        navigate('/');
+      }
     }
     
     setIsLoading(false);

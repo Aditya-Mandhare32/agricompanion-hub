@@ -107,6 +107,9 @@ export default function Community() {
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [postingComment, setPostingComment] = useState<string | null>(null);
   const [isAskingQuestion, setIsAskingQuestion] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -211,10 +214,72 @@ export default function Community() {
     setLoading(false);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+    
+    setSelectedImage(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removeSelectedImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    if (!user) return null;
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('community-images')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from('community-images')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
   const createPost = async () => {
     if (!newPost.trim() || !user || !profile) return;
 
     setIsPosting(true);
+    
+    let imageUrl: string | null = null;
+    
+    // Upload image if selected
+    if (selectedImage) {
+      setIsUploadingImage(true);
+      imageUrl = await uploadImage(selectedImage);
+      setIsUploadingImage(false);
+      
+      if (!imageUrl && selectedImage) {
+        toast.error('Failed to upload image');
+        setIsPosting(false);
+        return;
+      }
+    }
     
     const content = isAskingQuestion ? `❓ ${newPost.trim()}` : newPost.trim();
     
@@ -223,6 +288,7 @@ export default function Community() {
       .insert({
         user_id: user.id,
         content,
+        image_url: imageUrl,
       });
 
     if (error) {
@@ -230,9 +296,41 @@ export default function Community() {
     } else {
       setNewPost('');
       setIsAskingQuestion(false);
+      setSelectedImage(null);
+      setImagePreview(null);
       toast.success(isAskingQuestion ? 'Question posted!' : 'Post created!');
     }
     setIsPosting(false);
+  };
+
+  const deletePostImage = async (imageUrl: string) => {
+    if (!user) return;
+    
+    // Extract the path from the URL
+    const urlParts = imageUrl.split('/community-images/');
+    if (urlParts.length < 2) return;
+    
+    const filePath = urlParts[1];
+    
+    await supabase.storage
+      .from('community-images')
+      .remove([filePath]);
+  };
+
+  const deletePost = async (postId: string) => {
+    const post = posts.find(p => p.id === postId);
+    
+    // Delete associated image first
+    if (post?.image_url) {
+      await deletePostImage(post.image_url);
+    }
+    
+    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    if (error) {
+      toast.error('Failed to delete post');
+    } else {
+      toast.success('Post deleted');
+    }
   };
 
   const toggleLike = async (postId: string, isLiked: boolean) => {
@@ -259,13 +357,8 @@ export default function Community() {
     fetchPosts();
   };
 
-  const deletePost = async (postId: string) => {
-    const { error } = await supabase.from('posts').delete().eq('id', postId);
-    if (error) {
-      toast.error('Failed to delete post');
-    } else {
-      toast.success('Post deleted');
-    }
+  const deletePostOld = async (postId: string) => {
+    // This function is no longer used - see deletePost above
   };
 
   const addComment = async (postId: string) => {
@@ -501,9 +594,41 @@ export default function Community() {
                       onChange={(e) => setNewPost(e.target.value)}
                       className="min-h-[80px] resize-none border-0 focus-visible:ring-0 p-0 text-base"
                     />
+                    
+                    {/* Image Preview */}
+                    {imagePreview && (
+                      <div className="relative mt-3 inline-block">
+                        <img 
+                          src={imagePreview} 
+                          alt="Preview" 
+                          className="max-h-40 rounded-lg border"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                          onClick={removeSelectedImage}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center justify-between mt-3 pt-3 border-t">
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" className="text-muted-foreground">
+                        <input
+                          type="file"
+                          id="post-image-input"
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          className="hidden"
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className={selectedImage ? 'text-primary' : 'text-muted-foreground'}
+                          onClick={() => document.getElementById('post-image-input')?.click()}
+                        >
                           <ImageIcon className="h-5 w-5 mr-2" />
                           {language === 'hi' ? 'फोटो' : language === 'mr' ? 'फोटो' : 'Photo'}
                         </Button>
@@ -519,12 +644,19 @@ export default function Community() {
                       </div>
                       <Button 
                         onClick={createPost}
-                        disabled={!newPost.trim() || isPosting}
+                        disabled={!newPost.trim() || isPosting || isUploadingImage}
                         size="sm"
                         className="bg-primary"
                       >
-                        {isPosting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                        {language === 'hi' ? 'पोस्ट' : language === 'mr' ? 'पोस्ट' : 'Post'}
+                        {isPosting || isUploadingImage ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4 mr-2" />
+                        )}
+                        {isUploadingImage 
+                          ? (language === 'hi' ? 'अपलोड...' : language === 'mr' ? 'अपलोड...' : 'Uploading...')
+                          : (language === 'hi' ? 'पोस्ट' : language === 'mr' ? 'पोस्ट' : 'Post')
+                        }
                       </Button>
                     </div>
                   </div>

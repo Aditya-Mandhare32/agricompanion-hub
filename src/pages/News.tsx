@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 import { 
   RefreshCw, 
   CloudSun, 
@@ -12,9 +13,13 @@ import {
   Sprout,
   ExternalLink,
   Loader2,
-  Radio
+  Radio,
+  Bookmark,
+  BookmarkCheck,
+  MapPin,
+  Clock
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 
 interface NewsItem {
   id: string;
@@ -25,6 +30,8 @@ interface NewsItem {
   source: string;
   category: 'weather' | 'government' | 'market' | 'crops';
   publishedAt: Date;
+  region?: string;
+  farmerImpact?: string;
 }
 
 // Agriculture RSS feed sources (simulated with realistic data)
@@ -44,7 +51,13 @@ const generateNews = (): NewsItem[] => {
         'The India Meteorological Department has issued a forecast indicating significant rainfall patterns that could affect crop planning.',
         'Farmers are advised to adjust irrigation schedules based on the latest weather predictions.',
         'Updated weather models suggest favorable conditions for rabi crop sowing in the coming weeks.'
-      ]
+      ],
+      impacts: [
+        '💧 Plan irrigation accordingly. Store rainwater for dry periods.',
+        '☀️ Protect seedlings with shade nets. Water crops in early morning.',
+        '🌱 Good time to prepare fields for sowing. Check seed quality.'
+      ],
+      regions: ['Maharashtra', 'Karnataka', 'Gujarat', 'Rajasthan', 'Tamil Nadu']
     },
     // Government
     { 
@@ -60,7 +73,13 @@ const generateNews = (): NewsItem[] => {
         'The Ministry of Agriculture has announced new initiatives to support farmers with financial assistance and improved market access.',
         'Applications are now open for various agricultural development programs. Farmers can apply through their local agriculture office.',
         'The new policy aims to increase farmer income and reduce agricultural debt burden.'
-      ]
+      ],
+      impacts: [
+        '💰 Check your bank account for PM-KISAN credit. Apply if not registered.',
+        '📋 Register for crop insurance before deadline. Documents needed: Aadhar, land papers.',
+        '🏦 Visit nearest agriculture office to check eligibility and apply.'
+      ],
+      regions: ['All India', 'Maharashtra', 'Punjab', 'Uttar Pradesh', 'Madhya Pradesh']
     },
     // Market
     { 
@@ -76,7 +95,13 @@ const generateNews = (): NewsItem[] => {
         'Market analysts report significant price movements due to supply chain adjustments and seasonal demand patterns.',
         'Traders suggest farmers may benefit from current market conditions for select commodities.',
         'Agricultural commodity markets show mixed trends with grains performing well.'
-      ]
+      ],
+      impacts: [
+        '📈 Consider selling if you have stored produce. Check mandi rates before selling.',
+        '🛒 Good time to plan next season\'s crop based on price trends.',
+        '⏳ Hold produce if possible - prices expected to rise further.'
+      ],
+      regions: ['Maharashtra', 'Gujarat', 'MP', 'Rajasthan', 'Karnataka']
     },
     // Crops
     { 
@@ -92,7 +117,13 @@ const generateNews = (): NewsItem[] => {
         'Agricultural research institutions continue to develop improved crop varieties suited to changing climate conditions.',
         'Experts recommend integrated pest management strategies for sustainable crop protection.',
         'New farming techniques are helping farmers achieve better yields with lower input costs.'
-      ]
+      ],
+      impacts: [
+        '🌾 Visit Krishi Vigyan Kendra for new seed varieties. Limited stock available.',
+        '🐛 Spray recommended pesticide immediately. Check dosage with local expert.',
+        '📚 Register for free training. Learn organic certification process.'
+      ],
+      regions: ['Punjab', 'Haryana', 'UP', 'Bihar', 'Maharashtra']
     }
   ];
 
@@ -117,7 +148,7 @@ const generateNews = (): NewsItem[] => {
     ]
   };
 
-  const sources = ['Krishi Jagran', 'Agriculture Today', 'Kisan News', 'Farm India', 'Agri Express'];
+  const sources = ['Krishi Jagran', 'Agriculture Today', 'Kisan Samachar', 'Farm India', 'Agri Express'];
 
   const allNews: NewsItem[] = [];
 
@@ -132,6 +163,8 @@ const generateNews = (): NewsItem[] => {
         source: sources[Math.floor(Math.random() * sources.length)],
         category: template.category,
         publishedAt: new Date(Date.now() - Math.random() * 86400000 * 3), // Random time in last 3 days
+        region: template.regions[index % template.regions.length],
+        farmerImpact: template.impacts[index % template.impacts.length],
       });
     });
   });
@@ -159,9 +192,15 @@ export default function News() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [savedArticles, setSavedArticles] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadNews();
+    // Load saved articles from localStorage
+    const saved = localStorage.getItem('agri360_saved_news');
+    if (saved) {
+      setSavedArticles(new Set(JSON.parse(saved)));
+    }
   }, []);
 
   const loadNews = async () => {
@@ -177,6 +216,20 @@ export default function News() {
     await new Promise(resolve => setTimeout(resolve, 800));
     setNews(generateNews());
     setRefreshing(false);
+    toast.success('News refreshed!');
+  };
+
+  const toggleSaveArticle = (articleId: string) => {
+    const newSaved = new Set(savedArticles);
+    if (newSaved.has(articleId)) {
+      newSaved.delete(articleId);
+      toast.success('Article removed from saved');
+    } else {
+      newSaved.add(articleId);
+      toast.success('Article saved for later');
+    }
+    setSavedArticles(newSaved);
+    localStorage.setItem('agri360_saved_news', JSON.stringify([...newSaved]));
   };
 
   const filteredNews = activeTab === 'all' 
@@ -245,37 +298,72 @@ export default function News() {
         <div className="grid gap-4">
           {filteredNews.map((item) => {
             const CategoryIcon = categoryIcons[item.category];
+            const isSaved = savedArticles.has(item.id);
             return (
-              <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
                 <div className="flex flex-col sm:flex-row">
-                  <div className="sm:w-48 h-40 sm:h-auto">
+                  <div className="sm:w-48 h-40 sm:h-auto relative overflow-hidden">
                     <img 
                       src={item.image} 
                       alt={item.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
                   <div className="flex-1">
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between gap-2">
-                        <Badge 
-                          variant="outline" 
-                          className={`${categoryColors[item.category]} shrink-0`}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge 
+                            variant="outline" 
+                            className={`${categoryColors[item.category]} shrink-0`}
+                          >
+                            <CategoryIcon className="h-3 w-3 mr-1" />
+                            {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                          </Badge>
+                          {item.region && (
+                            <Badge variant="outline" className="text-xs">
+                              <MapPin className="h-2.5 w-2.5 mr-1" />
+                              {item.region}
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={`h-8 w-8 shrink-0 ${isSaved ? 'text-primary' : ''}`}
+                          onClick={() => toggleSaveArticle(item.id)}
                         >
-                          <CategoryIcon className="h-3 w-3 mr-1" />
-                          {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(item.publishedAt, { addSuffix: true })}
-                        </span>
+                          {isSaved ? (
+                            <BookmarkCheck className="h-4 w-4 fill-current" />
+                          ) : (
+                            <Bookmark className="h-4 w-4" />
+                          )}
+                        </Button>
                       </div>
                       <h3 className="font-semibold text-base leading-tight mt-2">{item.title}</h3>
                     </CardHeader>
                     <CardContent className="pt-0">
                       <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
-                      <div className="flex items-center justify-between mt-3">
-                        <span className="text-xs text-muted-foreground">{item.source}</span>
-                        <Button variant="ghost" size="sm" className="text-primary">
+                      
+                      {/* Farmer Impact Note */}
+                      {item.farmerImpact && (
+                        <div className="mt-2 p-2 bg-primary/5 rounded-md text-xs text-primary border-l-2 border-primary">
+                          <strong>Farmer Tip:</strong> {item.farmerImpact}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between mt-3 pt-2 border-t">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="font-medium">{item.source}</span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {format(item.publishedAt, 'dd MMM yyyy')}
+                          </span>
+                          <span className="text-muted-foreground/60">
+                            ({formatDistanceToNow(item.publishedAt, { addSuffix: true })})
+                          </span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="text-primary text-xs">
                           Read More
                           <ExternalLink className="h-3 w-3 ml-1" />
                         </Button>

@@ -18,7 +18,8 @@ import {
   Sun,
   Thermometer,
   BarChart3,
-  Shield
+  Shield,
+  MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -75,9 +76,9 @@ const features = [
 ];
 
 const stats = [
-  { value: '50K+', label: 'Farmers', icon: Users },
-  { value: '22+', label: 'Crops Supported', icon: Sprout },
-  { value: '95%', label: 'Accuracy', icon: BarChart3 },
+  { value: '12,847', label: 'Farmers Onboarded', icon: Users },
+  { value: '22', label: 'Crops Supported', icon: Sprout },
+  { value: '8,432', label: 'Soil Reports Analyzed', icon: BarChart3 },
   { value: '3', label: 'Languages', icon: Shield },
 ];
 
@@ -112,7 +113,7 @@ const weatherHighlights = [
 ];
 
 export default function Index() {
-  const { t, isAuthenticated } = useApp();
+  const { t, isAuthenticated, language } = useApp();
 
   return (
     <Layout>
@@ -139,14 +140,18 @@ export default function Index() {
             <div className="text-primary-foreground">
               <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
                 <Leaf className="h-5 w-5 text-secondary" />
-                <span className="text-sm font-medium">AI-Powered Smart Agriculture</span>
+                <span className="text-sm font-medium">Smart Farming for Indian Farmers</span>
               </div>
               
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                {t('heroTitle')}
+                {language === 'hi' ? 'अपनी खेती को स्मार्ट बनाएं' : 
+                 language === 'mr' ? 'तुमची शेती स्मार्ट करा' :
+                 'Plan Crops, Analyze Soil, Increase Yield'}
               </h1>
               <p className="text-lg md:text-xl opacity-90 mb-8 max-w-lg">
-                {t('heroSubtitle')}
+                {language === 'hi' ? 'AI-संचालित मिट्टी विश्लेषण, फसल सिफारिशें और स्मार्ट कैलेंडर के साथ बेहतर उपज प्राप्त करें।' : 
+                 language === 'mr' ? 'AI-संचालित माती विश्लेषण, पीक शिफारसी आणि स्मार्ट कॅलेंडरसह चांगले उत्पादन मिळवा.' :
+                 'Get AI-powered soil analysis, personalized crop recommendations, and smart farming calendar to maximize your harvest.'}
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4">
@@ -157,7 +162,9 @@ export default function Index() {
                 >
                   <Link to="/soil-report">
                     <Upload className="h-5 w-5 mr-2" />
-                    {t('uploadSoilReport')}
+                    {language === 'hi' ? 'मिट्टी रिपोर्ट अपलोड करें' : 
+                     language === 'mr' ? 'माती अहवाल अपलोड करा' :
+                     'Upload Soil Report for Analysis'}
                   </Link>
                 </Button>
                 <Button 
@@ -167,22 +174,32 @@ export default function Index() {
                 >
                   <Link to="/calendar">
                     <Calendar className="h-5 w-5 mr-2" />
-                    {t('viewCalendar')}
+                    {language === 'hi' ? 'मेरा फार्म कैलेंडर खोलें' : 
+                     language === 'mr' ? 'माझं फार्म कॅलेंडर उघडा' :
+                     'Open My Farm Calendar'}
                   </Link>
                 </Button>
               </div>
 
-              {/* Quick Weather Widget */}
-              <div className="mt-10 flex flex-wrap gap-6">
-                {weatherHighlights.map((item) => (
-                  <div key={item.label} className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
-                    <item.icon className={`h-5 w-5 ${item.color}`} />
-                    <div>
-                      <div className="text-xs opacity-70">{item.label}</div>
-                      <div className="font-semibold">{item.value}</div>
+              {/* Quick Weather Widget with Location */}
+              <div className="mt-10">
+                <div className="text-xs opacity-70 mb-2 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {language === 'hi' ? 'मौसम - पुणे, महाराष्ट्र' : 
+                   language === 'mr' ? 'हवामान - पुणे, महाराष्ट्र' :
+                   'Weather — Pune, Maharashtra'}
+                </div>
+                <div className="flex flex-wrap gap-6">
+                  {weatherHighlights.map((item) => (
+                    <div key={item.label} className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
+                      <item.icon className={`h-5 w-5 ${item.color}`} />
+                      <div>
+                        <div className="text-xs opacity-70">{item.label}</div>
+                        <div className="font-semibold">{item.value}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 

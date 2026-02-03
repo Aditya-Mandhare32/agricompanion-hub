@@ -97,6 +97,114 @@ export type Database = {
         }
         Relationships: []
       }
+      crop_history: {
+        Row: {
+          created_at: string | null
+          crop_category: string | null
+          crop_name: string
+          expected_harvest_date: string | null
+          field_name: string | null
+          id: string
+          soil_profile_id: string | null
+          source: string | null
+          sowing_date: string | null
+          suitability_score: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          crop_category?: string | null
+          crop_name: string
+          expected_harvest_date?: string | null
+          field_name?: string | null
+          id?: string
+          soil_profile_id?: string | null
+          source?: string | null
+          sowing_date?: string | null
+          suitability_score?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          crop_category?: string | null
+          crop_name?: string
+          expected_harvest_date?: string | null
+          field_name?: string | null
+          id?: string
+          soil_profile_id?: string | null
+          source?: string | null
+          sowing_date?: string | null
+          suitability_score?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      estimated_soil_profiles: {
+        Row: {
+          created_at: string | null
+          district: string
+          estimated_nitrogen: number | null
+          estimated_organic_carbon: number | null
+          estimated_ph: number | null
+          estimated_phosphorus: number | null
+          estimated_potassium: number | null
+          estimated_soil_type: string | null
+          fertilizer_usage: string | null
+          id: string
+          irrigation_available: boolean | null
+          previous_crop: string | null
+          soil_color: string | null
+          soil_texture: string | null
+          state: string
+          updated_at: string | null
+          user_id: string
+          village: string | null
+          water_retention: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          district: string
+          estimated_nitrogen?: number | null
+          estimated_organic_carbon?: number | null
+          estimated_ph?: number | null
+          estimated_phosphorus?: number | null
+          estimated_potassium?: number | null
+          estimated_soil_type?: string | null
+          fertilizer_usage?: string | null
+          id?: string
+          irrigation_available?: boolean | null
+          previous_crop?: string | null
+          soil_color?: string | null
+          soil_texture?: string | null
+          state: string
+          updated_at?: string | null
+          user_id: string
+          village?: string | null
+          water_retention?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          district?: string
+          estimated_nitrogen?: number | null
+          estimated_organic_carbon?: number | null
+          estimated_ph?: number | null
+          estimated_phosphorus?: number | null
+          estimated_potassium?: number | null
+          estimated_soil_type?: string | null
+          fertilizer_usage?: string | null
+          id?: string
+          irrigation_available?: boolean | null
+          previous_crop?: string | null
+          soil_color?: string | null
+          soil_texture?: string | null
+          state?: string
+          updated_at?: string | null
+          user_id?: string
+          village?: string | null
+          water_retention?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string

@@ -8,7 +8,11 @@ import { simulateOcrExtraction } from '@/lib/cropRecommendationEngine';
 import { FertilizerTable } from '@/components/soil/FertilizerTable';
 import { SoilHealthScore } from '@/components/soil/SoilHealthScore';
 import { AIAnalysisSection } from '@/components/soil/AIAnalysisSection';
+import { SoilEstimationMode } from '@/components/soil/SoilEstimationMode';
+import { AddToCropCalendarModal } from '@/components/soil/AddToCropCalendarModal';
 import { supabase } from '@/integrations/supabase/client';
+import { getPopularCrops } from '@/lib/indianRegionalData';
+import { Badge } from '@/components/ui/badge';
 import { 
   Upload, 
   Camera, 
@@ -20,7 +24,11 @@ import {
   Volume2,
   VolumeX,
   Sparkles,
-  LogIn
+  LogIn,
+  MapPin,
+  Calendar,
+  TrendingUp,
+  Leaf
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +58,7 @@ interface AIAnalysis {
     suitability: string;
     expectedYield: string;
     confidence: number;
+    category?: string;
   }>;
   fertilizerRecommendations: {
     chemical: Array<{ name: string; dosage: string; timing?: string }>;
@@ -60,7 +69,7 @@ interface AIAnalysis {
 
 export default function SoilReport() {
   const { t, setSoilData, language } = useApp();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -73,6 +82,10 @@ export default function SoilReport() {
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesisUtterance | null>(null);
+  const [showEstimationMode, setShowEstimationMode] = useState(false);
+  const [isEstimatedSoil, setIsEstimatedSoil] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [userLocation, setUserLocation] = useState<string>('Maharashtra');
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -276,7 +289,7 @@ export default function SoilReport() {
           </div>
 
           {/* Upload Section */}
-          {!soilParams && (
+          {!soilParams && !showEstimationMode && (
             <div className="mb-8">
               <div
                 onDragEnter={handleDrag}
@@ -348,6 +361,27 @@ export default function SoilReport() {
                 </Button>
               </div>
 
+              {/* No Soil Report Option */}
+              <div className="mt-8 text-center">
+                <div className="inline-flex items-center gap-2 text-muted-foreground mb-3">
+                  <div className="h-px w-16 bg-border" />
+                  <span className="text-sm">
+                    {language === 'hi' ? 'या' : language === 'mr' ? 'किंवा' : 'OR'}
+                  </span>
+                  <div className="h-px w-16 bg-border" />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEstimationMode(true)}
+                  className="border-dashed border-2 hover:border-primary hover:bg-primary/5"
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  {language === 'hi' ? 'कोई मिट्टी रिपोर्ट नहीं? मिट्टी का अनुमान लगाएं' : 
+                   language === 'mr' ? 'माती अहवाल नाही? मातीचा अंदाज लावा' :
+                   "No Soil Report? Estimate Soil Instead"}
+                </Button>
+              </div>
+
               {/* Analyze Button */}
               {file && (
                 <div className="flex justify-center mt-6">
@@ -372,6 +406,23 @@ export default function SoilReport() {
                   </Button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Soil Estimation Mode */}
+          {showEstimationMode && !soilParams && (
+            <div className="mb-8">
+              <SoilEstimationMode
+                language={language}
+                onEstimationComplete={(estimatedData) => {
+                  setSoilParams(estimatedData);
+                  setIsEstimatedSoil(true);
+                  setShowEstimationMode(false);
+                  // Run AI analysis on estimated data
+                  runAIAnalysis(estimatedData);
+                }}
+                onCancel={() => setShowEstimationMode(false)}
+              />
             </div>
           )}
 
@@ -427,6 +478,67 @@ export default function SoilReport() {
 
               {/* AI Analysis Section */}
               <AIAnalysisSection analysis={aiAnalysis} language={language} />
+
+              {/* Popular Crops Near You */}
+              {profile?.location && (
+                <Card className="border-primary/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                      {language === 'hi' ? 'आपके क्षेत्र में लोकप्रिय फसलें' : 
+                       language === 'mr' ? 'तुमच्या भागातील लोकप्रिय पिके' :
+                       'Popular Crops Near Your Location'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4" />
+                      {profile.location || userLocation}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {getPopularCrops(userLocation).slice(0, 6).map((crop) => (
+                        <Badge 
+                          key={crop.name} 
+                          variant="outline" 
+                          className="px-3 py-1"
+                        >
+                          <Leaf className="h-3 w-3 mr-1" />
+                          {crop.name}
+                          <span className="text-xs text-muted-foreground ml-1">({crop.adoption}%)</span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Add to Crop Calendar Button */}
+              {aiAnalysis.cropRecommendations && aiAnalysis.cropRecommendations.length > 0 && (
+                <div className="flex justify-center">
+                  <Button 
+                    onClick={() => setShowCalendarModal(true)}
+                    className="bg-primary"
+                    size="lg"
+                  >
+                    <Calendar className="h-5 w-5 mr-2" />
+                    {language === 'hi' ? 'फसल कैलेंडर में जोड़ें' : 
+                     language === 'mr' ? 'पीक कॅलेंडरमध्ये जोडा' :
+                     'Add to Crop Calendar'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Estimated Soil Label */}
+          {isEstimatedSoil && soilParams && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2 mb-6">
+              <MapPin className="h-4 w-4 text-amber-600" />
+              <span className="text-sm text-amber-800">
+                {language === 'hi' ? 'आपके स्थान और इनपुट के आधार पर मिट्टी का अनुमान लगाया गया' : 
+                 language === 'mr' ? 'तुमच्या स्थान आणि इनपुटवर आधारित मातीचा अंदाज' :
+                 'Soil estimated based on your location and inputs'}
+              </span>
             </div>
           )}
 
@@ -452,6 +564,7 @@ export default function SoilReport() {
                       setAiAnalysis(null);
                       setFile(null);
                       setPreview(null);
+                      setIsEstimatedSoil(false);
                     }}
                   >
                     {language === 'hi' ? 'नया अपलोड' : language === 'mr' ? 'नवीन अपलोड' : 'Upload New'}
@@ -625,6 +738,14 @@ export default function SoilReport() {
           )}
         </div>
       </div>
+
+      {/* Add to Calendar Modal */}
+      <AddToCropCalendarModal
+        isOpen={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        recommendations={aiAnalysis?.cropRecommendations || []}
+        language={language}
+      />
     </Layout>
   );
 }

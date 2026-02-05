@@ -1,7 +1,10 @@
 import React from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { Layout } from '@/components/layout/Layout';
+import { WeatherWidget } from '@/components/weather/WeatherWidget';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Upload, 
   Calendar, 
@@ -106,14 +109,27 @@ const testimonials = [
   },
 ];
 
-const weatherHighlights = [
-  { icon: Sun, label: 'Sunny', value: '32°C', color: 'text-amber-500' },
-  { icon: CloudRain, label: 'Rainfall', value: '45mm', color: 'text-sky-500' },
-  { icon: Thermometer, label: 'Humidity', value: '65%', color: 'text-emerald-500' },
-];
-
 export default function Index() {
   const { t, isAuthenticated, language } = useApp();
+  const [weatherData, setWeatherData] = useState<any>(null);
+  const [userCity, setUserCity] = useState('Pune');
+
+  useEffect(() => {
+    // Fetch weather data
+    const fetchWeather = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-weather', {
+          body: { city: userCity, language },
+        });
+        if (!error && data) {
+          setWeatherData(data);
+        }
+      } catch (err) {
+        console.error('Weather fetch error:', err);
+      }
+    };
+    fetchWeather();
+  }, [userCity, language]);
 
   return (
     <Layout>
@@ -185,21 +201,53 @@ export default function Index() {
               <div className="mt-10">
                 <div className="text-xs opacity-70 mb-2 flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  {language === 'hi' ? 'मौसम - पुणे, महाराष्ट्र' : 
-                   language === 'mr' ? 'हवामान - पुणे, महाराष्ट्र' :
-                   'Weather — Pune, Maharashtra'}
+                  {weatherData 
+                    ? `${language === 'hi' ? 'मौसम' : language === 'mr' ? 'हवामान' : 'Weather'} — ${weatherData.city}, ${weatherData.state}`
+                    : (language === 'hi' ? 'मौसम लोड हो रहा है...' : language === 'mr' ? 'हवामान लोड होत आहे...' : 'Loading weather...')
+                  }
                 </div>
-                <div className="flex flex-wrap gap-6">
-                  {weatherHighlights.map((item) => (
-                    <div key={item.label} className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
-                      <item.icon className={`h-5 w-5 ${item.color}`} />
+                {weatherData ? (
+                  <div className="flex flex-wrap gap-6">
+                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
+                      <Sun className="h-5 w-5 text-amber-400" />
                       <div>
-                        <div className="text-xs opacity-70">{item.label}</div>
-                        <div className="font-semibold">{item.value}</div>
+                        <div className="text-xs opacity-70">{weatherData.current?.description || 'Weather'}</div>
+                        <div className="font-semibold">{Math.round(weatherData.current?.temperature || 0)}°C</div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
+                      <CloudRain className="h-5 w-5 text-sky-400" />
+                      <div>
+                        <div className="text-xs opacity-70">{language === 'hi' ? 'साप्ताहिक वर्षा' : language === 'mr' ? 'साप्ताहिक पाऊस' : 'Weekly Rain'}</div>
+                        <div className="font-semibold">{Math.round(weatherData.totalWeeklyRainfall || 0)}mm</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
+                      <Thermometer className="h-5 w-5 text-emerald-400" />
+                      <div>
+                        <div className="text-xs opacity-70">{language === 'hi' ? 'आर्द्रता' : language === 'mr' ? 'आर्द्रता' : 'Humidity'}</div>
+                        <div className="font-semibold">{weatherData.current?.humidity || 0}%</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-6">
+                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg animate-pulse">
+                      <div className="h-5 w-5 rounded bg-white/20" />
+                      <div className="space-y-1">
+                        <div className="h-3 w-12 rounded bg-white/20" />
+                        <div className="h-4 w-8 rounded bg-white/20" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg animate-pulse">
+                      <div className="h-5 w-5 rounded bg-white/20" />
+                      <div className="space-y-1">
+                        <div className="h-3 w-16 rounded bg-white/20" />
+                        <div className="h-4 w-10 rounded bg-white/20" />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

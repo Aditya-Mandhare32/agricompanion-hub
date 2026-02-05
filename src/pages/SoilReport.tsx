@@ -10,6 +10,7 @@ import { SoilHealthScore } from '@/components/soil/SoilHealthScore';
 import { AIAnalysisSection } from '@/components/soil/AIAnalysisSection';
 import { SoilEstimationMode } from '@/components/soil/SoilEstimationMode';
 import { AddToCropCalendarModal } from '@/components/soil/AddToCropCalendarModal';
+import { SavedAnalysesList } from '@/components/soil/SavedAnalysesList';
 import { supabase } from '@/integrations/supabase/client';
 import { getPopularCrops } from '@/lib/indianRegionalData';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +29,9 @@ import {
   MapPin,
   Calendar,
   TrendingUp,
-  Leaf
+  Leaf,
+  History,
+  Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,6 +89,8 @@ export default function SoilReport() {
   const [isEstimatedSoil, setIsEstimatedSoil] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [userLocation, setUserLocation] = useState<string>('Maharashtra');
+  const [showSavedAnalyses, setShowSavedAnalyses] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -172,12 +177,41 @@ export default function SoilReport() {
       }
 
       setAiAnalysis(result);
+      // Auto-save analysis to database
+      await saveAnalysis(data, result);
       toast.success(language === 'hi' ? 'AI विश्लेषण पूर्ण!' : language === 'mr' ? 'AI विश्लेषण पूर्ण!' : 'AI analysis complete!');
     } catch (error) {
       console.error('AI analysis error:', error);
       toast.error('Failed to run AI analysis');
     } finally {
       setIsAIAnalyzing(false);
+    }
+  };
+
+  const saveAnalysis = async (soilData: SoilData, analysis: AIAnalysis) => {
+    if (!user) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('saved_soil_analyses' as any).insert({
+        user_id: user.id,
+        field_name: profile?.location || userLocation,
+        analysis_data: analysis as any,
+        soil_params: soilData as any,
+        language: language,
+        is_estimated: isEstimatedSoil,
+      });
+      
+      if (error) throw error;
+      toast.success(
+        language === 'hi' ? 'विश्लेषण सहेजा गया!' : 
+        language === 'mr' ? 'विश्लेषण जतन केले!' : 
+        'Analysis saved!'
+      );
+    } catch (error) {
+      console.error('Error saving analysis:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -286,7 +320,25 @@ export default function SoilReport() {
                language === 'mr' ? 'AI-संचालित माती विश्लेषण आणि पीक शिफारसी' :
                'AI-powered soil analysis and crop recommendations'}
             </p>
+            {/* View Previous Analyses Button */}
+            <Button
+              variant="outline"
+              onClick={() => setShowSavedAnalyses(!showSavedAnalyses)}
+              className="mt-4"
+            >
+              <History className="h-4 w-4 mr-2" />
+              {showSavedAnalyses
+                ? (language === 'hi' ? 'बंद करें' : language === 'mr' ? 'बंद करा' : 'Hide History')
+                : (language === 'hi' ? 'पिछले विश्लेषण देखें' : language === 'mr' ? 'मागील विश्लेषणे पहा' : 'View Previous Analyses')}
+            </Button>
           </div>
+
+          {/* Saved Analyses Section */}
+          {showSavedAnalyses && (
+            <div className="mb-8">
+              <SavedAnalysesList language={language} />
+            </div>
+          )}
 
           {/* Upload Section */}
           {!soilParams && !showEstimationMode && (

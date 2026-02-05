@@ -173,7 +173,7 @@ export function AddToCropCalendarModal({
         {
           user_id: user.id,
           crop_name: selectedCrop.crop,
-          event_type: 'harvesting',
+         event_type: 'harvest',
           event_date: format(harvestDate, 'yyyy-MM-dd'),
           notes: `Expected harvest - Duration: ${duration} days`,
         },

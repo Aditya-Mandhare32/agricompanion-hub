@@ -17,7 +17,10 @@ import {
   AlertTriangle,
   CheckCircle,
   TrendingUp,
-  Clock
+  Clock,
+  Target,
+  Calendar,
+  Sparkles
 } from 'lucide-react';
 
 interface NutrientStatus {
@@ -45,6 +48,15 @@ interface RecoveryGuidance {
   timeline: string;
 }
 
+interface ProblemDetected {
+  problem: string;
+  whyItAffects: string;
+  solution: string;
+  applicationMethod: string;
+  bestTimeToApply: string;
+  expectedImprovement: string;
+}
+
 interface AIAnalysis {
   healthScore: number;
   healthStatus: string;
@@ -55,6 +67,7 @@ interface AIAnalysis {
     potassium: NutrientStatus;
   };
   insights: string[];
+  problemsDetected?: ProblemDetected[];
   cropRecommendations: CropRecommendation[];
   fertilizerRecommendations: {
     chemical: FertilizerRec[];
@@ -90,6 +103,13 @@ export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps
       chemical: 'Chemical Fertilizers',
       organic: 'Organic Alternatives',
       recovery: 'Recovery Guidance',
+      problems: 'Problems & Solutions',
+      problem: 'Problem',
+      whyAffects: 'Impact on Crops',
+      solution: 'Solution',
+      howToApply: 'How to Apply',
+      whenToApply: 'Best Time to Apply',
+      expectedResult: 'Expected Improvement',
     },
     hi: {
       summary: 'AI सारांश',
@@ -99,6 +119,13 @@ export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps
       chemical: 'रासायनिक उर्वरक',
       organic: 'जैविक विकल्प',
       recovery: 'सुधार मार्गदर्शन',
+      problems: 'समस्याएं और समाधान',
+      problem: 'समस्या',
+      whyAffects: 'फसल पर प्रभाव',
+      solution: 'समाधान',
+      howToApply: 'कैसे लगाएं',
+      whenToApply: 'कब लगाएं',
+      expectedResult: 'अपेक्षित सुधार',
     },
     mr: {
       summary: 'AI सारांश',
@@ -108,10 +135,18 @@ export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps
       chemical: 'रासायनिक खते',
       organic: 'सेंद्रिय पर्याय',
       recovery: 'सुधारणा मार्गदर्शन',
+      problems: 'समस्या आणि उपाय',
+      problem: 'समस्या',
+      whyAffects: 'पिकावर परिणाम',
+      solution: 'उपाय',
+      howToApply: 'कसे वापरावे',
+      whenToApply: 'केव्हा वापरावे',
+      expectedResult: 'अपेक्षित सुधारणा',
     },
   };
 
   const t = titles[language as keyof typeof titles] || titles.en;
+  const tEn = titles.en;
 
   return (
     <div className="space-y-6">
@@ -127,6 +162,78 @@ export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps
           <p className="text-muted-foreground">{analysis.summary}</p>
         </CardContent>
       </Card>
+
+      {/* Problems Detected - Actionable Guidance */}
+      {analysis.problemsDetected && analysis.problemsDetected.length > 0 && (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg text-destructive">
+              <Target className="h-5 w-5" />
+              {(t as any).problems || tEn.problems}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {analysis.problemsDetected.map((item, index) => (
+                <div key={index} className="p-5 rounded-xl bg-background border shadow-sm">
+                  {/* Problem Header */}
+                  <div className="flex items-center gap-2 text-lg font-semibold text-destructive mb-3">
+                    <AlertTriangle className="h-5 w-5" />
+                    {item.problem}
+                  </div>
+                  
+                  {/* Why It Affects */}
+                  <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                    <div className="text-xs font-medium text-amber-700 mb-1">
+                      {(t as any).whyAffects || tEn.whyAffects}
+                    </div>
+                    <p className="text-sm text-amber-800">{item.whyItAffects}</p>
+                  </div>
+
+                  {/* Solution Grid */}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {/* Solution */}
+                    <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <div className="flex items-center gap-1 text-xs font-medium text-emerald-700 mb-1">
+                        <CheckCircle className="h-3 w-3" />
+                        {(t as any).solution || tEn.solution}
+                      </div>
+                      <p className="text-sm text-emerald-800 font-medium">{item.solution}</p>
+                    </div>
+
+                    {/* Application Method */}
+                    <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                      <div className="flex items-center gap-1 text-xs font-medium text-blue-700 mb-1">
+                        <FlaskConical className="h-3 w-3" />
+                        {(t as any).howToApply || tEn.howToApply}
+                      </div>
+                      <p className="text-sm text-blue-800">{item.applicationMethod}</p>
+                    </div>
+
+                    {/* Best Time */}
+                    <div className="p-3 rounded-lg bg-purple-50 border border-purple-200">
+                      <div className="flex items-center gap-1 text-xs font-medium text-purple-700 mb-1">
+                        <Calendar className="h-3 w-3" />
+                        {(t as any).whenToApply || tEn.whenToApply}
+                      </div>
+                      <p className="text-sm text-purple-800">{item.bestTimeToApply}</p>
+                    </div>
+
+                    {/* Expected Improvement */}
+                    <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                      <div className="flex items-center gap-1 text-xs font-medium text-green-700 mb-1">
+                        <Sparkles className="h-3 w-3" />
+                        {(t as any).expectedResult || tEn.expectedResult}
+                      </div>
+                      <p className="text-sm text-green-800 font-medium">{item.expectedImprovement}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Nutrient Analysis */}
       <Card>

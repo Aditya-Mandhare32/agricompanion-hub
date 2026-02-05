@@ -429,6 +429,84 @@ export type Database = {
           },
         ]
       }
+      saved_soil_analyses: {
+        Row: {
+          analysis_data: Json
+          created_at: string
+          field_name: string | null
+          id: string
+          is_estimated: boolean | null
+          language: string | null
+          soil_params: Json
+          user_id: string
+        }
+        Insert: {
+          analysis_data: Json
+          created_at?: string
+          field_name?: string | null
+          id?: string
+          is_estimated?: boolean | null
+          language?: string | null
+          soil_params: Json
+          user_id: string
+        }
+        Update: {
+          analysis_data?: Json
+          created_at?: string
+          field_name?: string | null
+          id?: string
+          is_estimated?: boolean | null
+          language?: string | null
+          soil_params?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      smart_notifications: {
+        Row: {
+          action_data: Json | null
+          action_type: string | null
+          created_at: string
+          dismissed: boolean | null
+          expires_at: string | null
+          id: string
+          message: string
+          priority: string | null
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          action_data?: Json | null
+          action_type?: string | null
+          created_at?: string
+          dismissed?: boolean | null
+          expires_at?: string | null
+          id?: string
+          message: string
+          priority?: string | null
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          action_data?: Json | null
+          action_type?: string | null
+          created_at?: string
+          dismissed?: boolean | null
+          expires_at?: string | null
+          id?: string
+          message?: string
+          priority?: string | null
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

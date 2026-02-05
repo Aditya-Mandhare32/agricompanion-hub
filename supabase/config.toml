@@ -1,1 +1,10 @@
 project_id = "khwmphvcydnsoozdeage"
+
+[functions.analyze-soil]
+verify_jwt = false
+
+[functions.soil-tts]
+verify_jwt = false
+
+[functions.get-weather]
+verify_jwt = false

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, MessageCircle, User, Newspaper } from 'lucide-react';
+import { Home, Users, User, Newspaper } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
@@ -7,7 +7,6 @@ const navItems = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/community', icon: Users, label: 'Community' },
   { path: '/news', icon: Newspaper, label: 'News' },
-  { path: '/messages', icon: MessageCircle, label: 'Messages' },
   { path: '/profile', icon: User, label: 'Profile' },
 ];
 

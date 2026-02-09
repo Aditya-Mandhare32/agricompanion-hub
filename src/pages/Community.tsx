@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/hooks/useAuth';
 import { useApp } from '@/context/AppContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Users, MessageCircle, MapPin, UsersRound, Loader2, LogIn } from 'lucide-react';
+import { Users, MessageCircle, Bookmark, UserCircle, Loader2, LogIn, ArrowLeft } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { CommunityFeed } from '@/components/community/CommunityFeed';
 import { CommunityMessages } from '@/components/community/CommunityMessages';
-import { NearbyFarmers } from '@/components/community/NearbyFarmers';
-import { CommunityGroups } from '@/components/community/CommunityGroups';
+import { SavedPosts } from '@/components/community/SavedPosts';
+import { MyPosts } from '@/components/community/MyPosts';
+import { Chatbot } from '@/components/Chatbot';
 
 export default function Community() {
   const { user, loading: authLoading } = useAuth();
@@ -20,10 +20,9 @@ export default function Community() {
   const [activeTab, setActiveTab] = useState('feed');
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
 
-  // Check for tab or user params
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['feed', 'messages', 'nearby', 'groups'].includes(tab)) {
+    if (tab && ['feed', 'messages', 'saved', 'myposts'].includes(tab)) {
       setActiveTab(tab);
     }
     const targetUser = searchParams.get('user');
@@ -33,7 +32,6 @@ export default function Community() {
     }
   }, [searchParams]);
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       sessionStorage.setItem('redirectAfterLogin', location.pathname);
@@ -48,18 +46,16 @@ export default function Community() {
 
   if (authLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!user) {
     return (
-      <Layout>
-        <div className="container mx-auto px-4 py-20 text-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center px-4">
           <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-2">
             {language === 'hi' ? 'लॉगिन आवश्यक' : language === 'mr' ? 'लॉगिन आवश्यक' : 'Login Required'}
@@ -74,47 +70,45 @@ export default function Community() {
             {language === 'hi' ? 'लॉगिन' : language === 'mr' ? 'लॉगिन' : 'Login'}
           </Button>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="container max-w-6xl mx-auto px-4 py-6 pb-24 md:pb-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">
-            {language === 'hi' ? 'किसान समुदाय' : language === 'mr' ? 'शेतकरी समुदाय' : 'Farmer Community'}
-          </h1>
-          <p className="text-muted-foreground">
-            {language === 'hi' ? 'अपने अनुभव साझा करें, चैट करें और अन्य किसानों से जुड़ें' :
-             language === 'mr' ? 'तुमचे अनुभव शेअर करा, चॅट करा आणि इतर शेतकऱ्यांशी जोडा' :
-             'Share experiences, chat, and connect with fellow farmers'}
-          </p>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Custom Community Header - replaces main app nav */}
+      <header className="sticky top-0 z-50 w-full border-b border-border/50 glass-effect">
+        <div className="container mx-auto flex h-14 items-center px-4 gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="shrink-0">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold truncate">
+              {language === 'hi' ? 'किसान समुदाय' : language === 'mr' ? 'शेतकरी समुदाय' : 'Farmer Community'}
+            </h1>
+          </div>
         </div>
+      </header>
 
-        {/* Community Tabs */}
+      {/* Community Content */}
+      <div className="flex-1 container max-w-6xl mx-auto px-4 py-4 pb-20">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mb-6">
+          <TabsList className="w-full grid grid-cols-4 mb-4">
             <TabsTrigger value="feed" className="gap-1.5 text-xs sm:text-sm">
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'hi' ? 'फ़ीड' : language === 'mr' ? 'फीड' : 'Feed'}</span>
-              <span className="sm:hidden">{language === 'hi' ? 'फ़ीड' : language === 'mr' ? 'फीड' : 'Feed'}</span>
+              <span>{language === 'hi' ? 'फ़ीड' : language === 'mr' ? 'फीड' : 'Feed'}</span>
             </TabsTrigger>
             <TabsTrigger value="messages" className="gap-1.5 text-xs sm:text-sm">
               <MessageCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'hi' ? 'संदेश' : language === 'mr' ? 'संदेश' : 'Chat'}</span>
-              <span className="sm:hidden">{language === 'hi' ? 'चैट' : language === 'mr' ? 'चॅट' : 'Chat'}</span>
+              <span>{language === 'hi' ? 'चैट' : language === 'mr' ? 'चॅट' : 'Chat'}</span>
             </TabsTrigger>
-            <TabsTrigger value="nearby" className="gap-1.5 text-xs sm:text-sm">
-              <MapPin className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'hi' ? 'नज़दीकी किसान' : language === 'mr' ? 'जवळचे शेतकरी' : 'Nearby'}</span>
-              <span className="sm:hidden">{language === 'hi' ? 'नज़दीक' : language === 'mr' ? 'जवळ' : 'Near'}</span>
+            <TabsTrigger value="saved" className="gap-1.5 text-xs sm:text-sm">
+              <Bookmark className="h-4 w-4" />
+              <span>{language === 'hi' ? 'सहेजे' : language === 'mr' ? 'जतन' : 'Saved'}</span>
             </TabsTrigger>
-            <TabsTrigger value="groups" className="gap-1.5 text-xs sm:text-sm">
-              <UsersRound className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'hi' ? 'समूह' : language === 'mr' ? 'गट' : 'Groups'}</span>
-              <span className="sm:hidden">{language === 'hi' ? 'समूह' : language === 'mr' ? 'गट' : 'Groups'}</span>
+            <TabsTrigger value="myposts" className="gap-1.5 text-xs sm:text-sm">
+              <UserCircle className="h-4 w-4" />
+              <span>{language === 'hi' ? 'मेरे' : language === 'mr' ? 'माझे' : 'Mine'}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -126,15 +120,17 @@ export default function Community() {
             <CommunityMessages targetUserId={messageTarget} />
           </TabsContent>
 
-          <TabsContent value="nearby">
-            <NearbyFarmers onMessageFarmer={handleNavigateToMessages} />
+          <TabsContent value="saved">
+            <SavedPosts onNavigateToMessages={handleNavigateToMessages} />
           </TabsContent>
 
-          <TabsContent value="groups">
-            <CommunityGroups />
+          <TabsContent value="myposts">
+            <MyPosts />
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
+
+      <Chatbot />
+    </div>
   );
 }

@@ -478,110 +478,6 @@ export default function SoilReport() {
             </div>
           )}
 
-          {/* AI Analysis Loading */}
-          {isAIAnalyzing && (
-            <Card className="mb-8 border-primary/20 bg-primary/5">
-              <CardContent className="py-8 text-center">
-                <Sparkles className="h-12 w-12 mx-auto text-primary mb-4 animate-pulse" />
-                <h3 className="text-lg font-semibold mb-2">
-                  {language === 'hi' ? 'AI विश्लेषण चल रहा है...' : 
-                   language === 'mr' ? 'AI विश्लेषण सुरू आहे...' :
-                   'AI Analysis in Progress...'}
-                </h3>
-                <p className="text-muted-foreground">
-                  {language === 'hi' ? 'कृपया प्रतीक्षा करें' : 
-                   language === 'mr' ? 'कृपया प्रतीक्षा करा' :
-                   'Please wait while we analyze your soil data'}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* AI Analysis Results */}
-          {aiAnalysis && soilParams && (
-            <div className="space-y-6 mb-8">
-              {/* Voice Explanation Button */}
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  onClick={handleVoiceExplanation}
-                  className={isSpeaking ? 'bg-primary text-primary-foreground' : ''}
-                >
-                  {isSpeaking ? (
-                    <>
-                      <VolumeX className="h-4 w-4 mr-2" />
-                      {language === 'hi' ? 'रोकें' : language === 'mr' ? 'थांबवा' : 'Stop'}
-                    </>
-                  ) : (
-                    <>
-                      <Volume2 className="h-4 w-4 mr-2" />
-                      {language === 'hi' ? 'सुनें' : language === 'mr' ? 'ऐका' : 'Listen to Report'}
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Soil Health Score */}
-              <SoilHealthScore 
-                score={aiAnalysis.healthScore} 
-                status={aiAnalysis.healthStatus}
-                language={language}
-              />
-
-              {/* AI Analysis Section */}
-              <AIAnalysisSection analysis={aiAnalysis} language={language} />
-
-              {/* Popular Crops Near You */}
-              {profile?.location && (
-                <Card className="border-primary/20">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-primary" />
-                      {language === 'hi' ? 'आपके क्षेत्र में लोकप्रिय फसलें' : 
-                       language === 'mr' ? 'तुमच्या भागातील लोकप्रिय पिके' :
-                       'Popular Crops Near Your Location'}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4" />
-                      {profile.location || userLocation}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {getPopularCrops(userLocation).slice(0, 6).map((crop) => (
-                        <Badge 
-                          key={crop.name} 
-                          variant="outline" 
-                          className="px-3 py-1"
-                        >
-                          <Leaf className="h-3 w-3 mr-1" />
-                          {crop.name}
-                          <span className="text-xs text-muted-foreground ml-1">({crop.adoption}%)</span>
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Add to Crop Calendar Button */}
-              {aiAnalysis.cropRecommendations && aiAnalysis.cropRecommendations.length > 0 && (
-                <div className="flex justify-center">
-                  <Button 
-                    onClick={() => setShowCalendarModal(true)}
-                    className="bg-primary"
-                    size="lg"
-                  >
-                    <Calendar className="h-5 w-5 mr-2" />
-                    {language === 'hi' ? 'फसल कैलेंडर में जोड़ें' : 
-                     language === 'mr' ? 'पीक कॅलेंडरमध्ये जोडा' :
-                     'Add to Crop Calendar'}
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Estimated Soil Label */}
           {isEstimatedSoil && soilParams && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2 mb-6">
@@ -594,9 +490,9 @@ export default function SoilReport() {
             </div>
           )}
 
-          {/* Soil Parameters Form */}
+          {/* Soil Parameters Form - Show during AND after analysis */}
           {soilParams && (
-            <div className="bg-card rounded-2xl shadow-lg border border-border p-6 md:p-8">
+            <div className="bg-card rounded-2xl shadow-lg border border-border p-6 md:p-8 mb-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold">{t('soilParameters')}</h2>
                 <div className="flex gap-2">
@@ -625,138 +521,54 @@ export default function SoilReport() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* pH Level */}
                 <div className="space-y-2">
                   <Label htmlFor="ph" className="flex items-center gap-2">
                     {t('ph')}
                     {!isValidPh && <AlertCircle className="h-4 w-4 text-destructive" />}
                   </Label>
-                  <Input
-                    id="ph"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="14"
-                    value={soilParams.ph}
-                    onChange={(e) => updateSoilParam('ph', e.target.value)}
-                    className={!isValidPh ? 'border-destructive' : ''}
-                  />
-                  {!isValidPh && (
-                    <p className="text-xs text-destructive">pH must be between 0-14</p>
-                  )}
+                  <Input id="ph" type="number" step="0.1" min="0" max="14" value={soilParams.ph} onChange={(e) => updateSoilParam('ph', e.target.value)} className={!isValidPh ? 'border-destructive' : ''} />
+                  {!isValidPh && <p className="text-xs text-destructive">pH must be between 0-14</p>}
                 </div>
-
-                {/* Nitrogen */}
                 <div className="space-y-2">
                   <Label htmlFor="nitrogen">{t('nitrogen')} (kg/ha)</Label>
-                  <Input
-                    id="nitrogen"
-                    type="number"
-                    value={soilParams.nitrogen}
-                    onChange={(e) => updateSoilParam('nitrogen', e.target.value)}
-                  />
+                  <Input id="nitrogen" type="number" value={soilParams.nitrogen} onChange={(e) => updateSoilParam('nitrogen', e.target.value)} />
                 </div>
-
-                {/* Phosphorus */}
                 <div className="space-y-2">
                   <Label htmlFor="phosphorus">{t('phosphorus')} (kg/ha)</Label>
-                  <Input
-                    id="phosphorus"
-                    type="number"
-                    value={soilParams.phosphorus}
-                    onChange={(e) => updateSoilParam('phosphorus', e.target.value)}
-                  />
+                  <Input id="phosphorus" type="number" value={soilParams.phosphorus} onChange={(e) => updateSoilParam('phosphorus', e.target.value)} />
                 </div>
-
-                {/* Potassium */}
                 <div className="space-y-2">
                   <Label htmlFor="potassium">{t('potassium')} (kg/ha)</Label>
-                  <Input
-                    id="potassium"
-                    type="number"
-                    value={soilParams.potassium}
-                    onChange={(e) => updateSoilParam('potassium', e.target.value)}
-                  />
+                  <Input id="potassium" type="number" value={soilParams.potassium} onChange={(e) => updateSoilParam('potassium', e.target.value)} />
                 </div>
-
-                {/* Organic Carbon */}
                 <div className="space-y-2">
                   <Label htmlFor="organicCarbon">{t('organicCarbon')} (%)</Label>
-                  <Input
-                    id="organicCarbon"
-                    type="number"
-                    step="0.01"
-                    value={soilParams.organicCarbon}
-                    onChange={(e) => updateSoilParam('organicCarbon', e.target.value)}
-                  />
+                  <Input id="organicCarbon" type="number" step="0.01" value={soilParams.organicCarbon} onChange={(e) => updateSoilParam('organicCarbon', e.target.value)} />
                 </div>
-
-                {/* EC */}
                 <div className="space-y-2">
                   <Label htmlFor="ec">{t('electricalConductivity')}</Label>
-                  <Input
-                    id="ec"
-                    type="number"
-                    step="0.01"
-                    value={soilParams.ec}
-                    onChange={(e) => updateSoilParam('ec', e.target.value)}
-                  />
+                  <Input id="ec" type="number" step="0.01" value={soilParams.ec} onChange={(e) => updateSoilParam('ec', e.target.value)} />
                 </div>
-
-                {/* Moisture */}
                 <div className="space-y-2">
                   <Label htmlFor="moisture">{t('moisture')}</Label>
-                  <Input
-                    id="moisture"
-                    type="number"
-                    value={soilParams.moisture}
-                    onChange={(e) => updateSoilParam('moisture', e.target.value)}
-                  />
+                  <Input id="moisture" type="number" value={soilParams.moisture} onChange={(e) => updateSoilParam('moisture', e.target.value)} />
                 </div>
-
-                {/* Temperature */}
                 <div className="space-y-2">
                   <Label htmlFor="temperature">{t('temperature')}</Label>
-                  <Input
-                    id="temperature"
-                    type="number"
-                    value={soilParams.temperature}
-                    onChange={(e) => updateSoilParam('temperature', e.target.value)}
-                  />
+                  <Input id="temperature" type="number" value={soilParams.temperature} onChange={(e) => updateSoilParam('temperature', e.target.value)} />
                 </div>
-
-                {/* Humidity */}
                 <div className="space-y-2">
                   <Label htmlFor="humidity">{t('humidity')}</Label>
-                  <Input
-                    id="humidity"
-                    type="number"
-                    value={soilParams.humidity}
-                    onChange={(e) => updateSoilParam('humidity', e.target.value)}
-                  />
+                  <Input id="humidity" type="number" value={soilParams.humidity} onChange={(e) => updateSoilParam('humidity', e.target.value)} />
                 </div>
-
-                {/* Rainfall */}
                 <div className="space-y-2">
                   <Label htmlFor="rainfall">{t('rainfall')}</Label>
-                  <Input
-                    id="rainfall"
-                    type="number"
-                    value={soilParams.rainfall}
-                    onChange={(e) => updateSoilParam('rainfall', e.target.value)}
-                  />
+                  <Input id="rainfall" type="number" value={soilParams.rainfall} onChange={(e) => updateSoilParam('rainfall', e.target.value)} />
                 </div>
-
-                {/* Soil Texture */}
                 <div className="space-y-2">
                   <Label htmlFor="texture">{t('texture')}</Label>
-                  <Select
-                    value={soilParams.texture}
-                    onValueChange={(value) => updateSoilParam('texture', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select texture" />
-                    </SelectTrigger>
+                  <Select value={soilParams.texture} onValueChange={(value) => updateSoilParam('texture', value)}>
+                    <SelectTrigger><SelectValue placeholder="Select texture" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Sandy">Sandy</SelectItem>
                       <SelectItem value="Loamy">Loamy</SelectItem>
@@ -768,17 +580,114 @@ export default function SoilReport() {
                 </div>
               </div>
 
-              {/* Get Recommendations Button */}
               <div className="flex justify-center mt-8">
-                <Button 
-                  onClick={getRecommendations}
-                  disabled={!isValidPh}
-                  className="btn-primary text-lg px-8"
-                >
+                <Button onClick={getRecommendations} disabled={!isValidPh} className="btn-primary text-lg px-8">
                   {t('getRecommendations')}
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </div>
+            </div>
+          )}
+
+          {/* AI Analysis Loading - Agriculture themed */}
+          {isAIAnalyzing && (
+            <Card className="mb-8 border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
+              <CardContent className="py-10 text-center">
+                <div className="relative inline-block mb-6">
+                  <div className="w-20 h-20 rounded-full border-4 border-primary/20 flex items-center justify-center">
+                    <Leaf className="h-10 w-10 text-primary animate-pulse" />
+                  </div>
+                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">
+                  {language === 'hi' ? '🌱 AI मिट्टी विश्लेषण चल रहा है...' : 
+                   language === 'mr' ? '🌱 AI माती विश्लेषण सुरू आहे...' :
+                   '🌱 AI Soil Analysis in Progress...'}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {language === 'hi' ? 'आपकी मिट्टी का गहन विश्लेषण किया जा रहा है' : 
+                   language === 'mr' ? 'तुमच्या मातीचे सखोल विश्लेषण केले जात आहे' :
+                   'Performing deep analysis of your soil parameters'}
+                </p>
+                <div className="flex justify-center gap-1">
+                  {['🌾', '🧪', '🌿', '💧', '☀️'].map((emoji, i) => (
+                    <span key={i} className="text-2xl animate-bounce" style={{ animationDelay: `${i * 0.15}s` }}>{emoji}</span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* AI Analysis Results */}
+          {aiAnalysis && soilParams && (
+            <div className="space-y-6 mb-8">
+              {/* Voice Explanation Button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={handleVoiceExplanation}
+                  className={isSpeaking ? 'bg-primary text-primary-foreground' : ''}
+                >
+                  {isSpeaking ? (
+                    <>
+                      <VolumeX className="h-4 w-4 mr-2" />
+                      {language === 'hi' ? 'रोकें' : language === 'mr' ? 'थांबवा' : 'Stop'}
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="h-4 w-4 mr-2" />
+                      {language === 'hi' ? 'सुनें' : language === 'mr' ? 'ऐका' : 'Listen to Report'}
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <SoilHealthScore 
+                score={aiAnalysis.healthScore} 
+                status={aiAnalysis.healthStatus}
+                language={language}
+              />
+
+              <AIAnalysisSection analysis={aiAnalysis} language={language} />
+
+              {profile?.location && (
+                <Card className="border-primary/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                      {language === 'hi' ? 'आपके क्षेत्र में लोकप्रिय फसलें' : 
+                       language === 'mr' ? 'तुमच्या भागातील लोकप्रिय पिके' :
+                       'Popular Crops Near Your Location'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4" />
+                      {profile.location || userLocation}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {getPopularCrops(userLocation).slice(0, 6).map((crop) => (
+                        <Badge key={crop.name} variant="outline" className="px-3 py-1">
+                          <Leaf className="h-3 w-3 mr-1" />
+                          {crop.name}
+                          <span className="text-xs text-muted-foreground ml-1">({crop.adoption}%)</span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {aiAnalysis.cropRecommendations && aiAnalysis.cropRecommendations.length > 0 && (
+                <div className="flex justify-center">
+                  <Button onClick={() => setShowCalendarModal(true)} className="bg-primary" size="lg">
+                    <Calendar className="h-5 w-5 mr-2" />
+                    {language === 'hi' ? 'फसल कैलेंडर में जोड़ें' : 
+                     language === 'mr' ? 'पीक कॅलेंडरमध्ये जोडा' :
+                     'Add to Crop Calendar'}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

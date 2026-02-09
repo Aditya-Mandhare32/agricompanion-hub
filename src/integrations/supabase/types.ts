@@ -139,6 +139,99 @@ export type Database = {
         }
         Relationships: []
       }
+      crops: {
+        Row: {
+          category: string
+          cost_per_acre: number | null
+          created_at: string | null
+          duration_days: number | null
+          expected_yield_per_acre: string | null
+          expert_tips: string[] | null
+          growing_guide: Json | null
+          id: string
+          ideal_temperature_max: number | null
+          ideal_temperature_min: number | null
+          image_url: string | null
+          market_price_range: string | null
+          max_nitrogen: number | null
+          max_ph: number | null
+          max_phosphorus: number | null
+          max_potassium: number | null
+          min_nitrogen: number | null
+          min_ph: number | null
+          min_phosphorus: number | null
+          min_potassium: number | null
+          name: string
+          name_hi: string | null
+          name_mr: string | null
+          profit_potential: string | null
+          season: string
+          soil_types: string[] | null
+          updated_at: string | null
+          water_needs: string | null
+        }
+        Insert: {
+          category: string
+          cost_per_acre?: number | null
+          created_at?: string | null
+          duration_days?: number | null
+          expected_yield_per_acre?: string | null
+          expert_tips?: string[] | null
+          growing_guide?: Json | null
+          id?: string
+          ideal_temperature_max?: number | null
+          ideal_temperature_min?: number | null
+          image_url?: string | null
+          market_price_range?: string | null
+          max_nitrogen?: number | null
+          max_ph?: number | null
+          max_phosphorus?: number | null
+          max_potassium?: number | null
+          min_nitrogen?: number | null
+          min_ph?: number | null
+          min_phosphorus?: number | null
+          min_potassium?: number | null
+          name: string
+          name_hi?: string | null
+          name_mr?: string | null
+          profit_potential?: string | null
+          season: string
+          soil_types?: string[] | null
+          updated_at?: string | null
+          water_needs?: string | null
+        }
+        Update: {
+          category?: string
+          cost_per_acre?: number | null
+          created_at?: string | null
+          duration_days?: number | null
+          expected_yield_per_acre?: string | null
+          expert_tips?: string[] | null
+          growing_guide?: Json | null
+          id?: string
+          ideal_temperature_max?: number | null
+          ideal_temperature_min?: number | null
+          image_url?: string | null
+          market_price_range?: string | null
+          max_nitrogen?: number | null
+          max_ph?: number | null
+          max_phosphorus?: number | null
+          max_potassium?: number | null
+          min_nitrogen?: number | null
+          min_ph?: number | null
+          min_phosphorus?: number | null
+          min_potassium?: number | null
+          name?: string
+          name_hi?: string | null
+          name_mr?: string | null
+          profit_potential?: string | null
+          season?: string
+          soil_types?: string[] | null
+          updated_at?: string | null
+          water_needs?: string | null
+        }
+        Relationships: []
+      }
       estimated_soil_profiles: {
         Row: {
           created_at: string | null

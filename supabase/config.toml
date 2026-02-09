@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.get-weather]
 verify_jwt = false
+
+[functions.generate-smart-notifications]
+verify_jwt = false
+
+[functions.populate-crops]
+verify_jwt = false

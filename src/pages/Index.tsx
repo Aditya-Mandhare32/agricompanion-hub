@@ -2,8 +2,10 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout/Layout';
 import { WeatherWidget } from '@/components/weather/WeatherWidget';
+import { SmartNotifications } from '@/components/notifications/SmartNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Upload, 
@@ -111,6 +113,7 @@ const testimonials = [
 
 export default function Index() {
   const { t, isAuthenticated, language } = useApp();
+  const { user } = useAuth();
   const [weatherData, setWeatherData] = useState<any>(null);
   const [userCity, setUserCity] = useState('Pune');
 
@@ -308,6 +311,15 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      {/* Smart Notifications for logged-in users */}
+      {user && (
+        <section className="py-8 bg-background">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <SmartNotifications />
+          </div>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="py-20 bg-background">

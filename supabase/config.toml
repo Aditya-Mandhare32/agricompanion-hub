@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.populate-crops]
 verify_jwt = false
+
+[functions.fetch-news]
+verify_jwt = false
+
+[functions.chatbot-ai]
+verify_jwt = false
+
+[functions.get-market-prices]
+verify_jwt = false

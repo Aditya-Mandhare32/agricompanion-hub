@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import SoilReport from "./pages/SoilReport";
 import Crops from "./pages/Crops";
+import CropExplorer from "./pages/CropExplorer";
 import CalendarPage from "./pages/CalendarPage";
 import Profile from "./pages/Profile";
 import Community from "./pages/Community";
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/signup" element={<Signup />} />
               <Route path="/soil-report" element={<SoilReport />} />
               <Route path="/crops" element={<Crops />} />
+              <Route path="/crop-explorer" element={<CropExplorer />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/community" element={<Community />} />

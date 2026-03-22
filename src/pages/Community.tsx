@@ -108,7 +108,7 @@ export default function Community() {
             </TabsTrigger>
             <TabsTrigger value="myposts" className="gap-1.5 text-xs sm:text-sm">
               <UserCircle className="h-4 w-4" />
-              <span>{language === 'hi' ? 'मेरे' : language === 'mr' ? 'माझे' : 'Mine'}</span>
+              <span>{language === 'hi' ? 'प्रोफ़ाइल' : language === 'mr' ? 'प्रोफाइल' : 'Profile'}</span>
             </TabsTrigger>
           </TabsList>
 

@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, ArrowLeft, Search, Loader2, MessageCircle, Plus } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Send, ArrowLeft, Search, Loader2, MessageCircle, Plus, Image as ImageIcon, Video, Mic, MicOff, X, Play, Pause } from 'lucide-react';
+import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface Conversation {
   id: string;
@@ -36,6 +37,20 @@ interface CommunityMessagesProps {
   targetUserId?: string | null;
 }
 
+function formatMessageTime(dateStr: string) {
+  const date = new Date(dateStr);
+  if (isToday(date)) return format(date, 'h:mm a');
+  if (isYesterday(date)) return 'Yesterday ' + format(date, 'h:mm a');
+  return format(date, 'MMM d, h:mm a');
+}
+
+function formatConversationDate(dateStr: string) {
+  const date = new Date(dateStr);
+  if (isToday(date)) return format(date, 'h:mm a');
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'MMM d');
+}
+
 export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
   const { user } = useAuth();
   const { language } = useApp();
@@ -48,12 +63,30 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [showSearch, setShowSearch] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
     fetchConversations();
     if (targetUserId) startConversationWithUser(targetUserId);
+
+    // Real-time conversation updates
+    const channel = supabase
+      .channel('conversations_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        fetchConversations();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [user, targetUserId]);
 
   useEffect(() => {
@@ -62,8 +95,16 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
       const channel = supabase
         .channel(`messages_${selectedConversation.id}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedConversation.id}` }, (payload) => {
-          setMessages(prev => [...prev, payload.new as Message]);
+          const newMsg = payload.new as Message;
+          setMessages(prev => {
+            if (prev.find(m => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
           scrollToBottom();
+          // Mark as read
+          if (newMsg.sender_id !== user?.id) {
+            supabase.from('messages').update({ read: true }).eq('id', newMsg.id).then(() => {});
+          }
         })
         .subscribe();
       return () => { supabase.removeChannel(channel); };
@@ -72,7 +113,7 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
 
   useEffect(() => { scrollToBottom(); }, [messages]);
 
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = () => setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
 
   const fetchConversations = async () => {
     if (!user) return;
@@ -132,8 +173,82 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
     setSearchQuery('');
   };
 
+  const uploadMedia = async (file: File): Promise<string | null> => {
+    if (!user) return null;
+    const fileExt = file.name.split('.').pop() || 'bin';
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from('community-images').upload(fileName, file);
+    if (error) { console.error('Upload error:', error); return null; }
+    const { data } = supabase.storage.from('community-images').getPublicUrl(fileName);
+    return data.publicUrl;
+  };
+
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isVideo) { toast.error('Please select an image or video'); return; }
+    if (file.size > 50 * 1024 * 1024) { toast.error('File must be less than 50MB'); return; }
+    setSelectedMedia(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setMediaPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        const file = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+        setUploading(true);
+        const url = await uploadMedia(file);
+        if (url && selectedConversation && user) {
+          await supabase.from('messages').insert({ conversation_id: selectedConversation.id, sender_id: user.id, content: `🎤 ${url}` });
+          await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', selectedConversation.id);
+        }
+        setUploading(false);
+        setIsRecording(false);
+      };
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+    } catch (err) {
+      toast.error('Microphone access denied');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+  };
+
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !user) return;
+    if (!selectedConversation || !user) return;
+
+    if (selectedMedia) {
+      setUploading(true);
+      const url = await uploadMedia(selectedMedia);
+      if (url) {
+        const prefix = selectedMedia.type.startsWith('video/') ? '🎬' : '📷';
+        const content = newMessage.trim() ? `${prefix} ${url}\n${newMessage.trim()}` : `${prefix} ${url}`;
+        await supabase.from('messages').insert({ conversation_id: selectedConversation.id, sender_id: user.id, content });
+        await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', selectedConversation.id);
+      }
+      setSelectedMedia(null);
+      setMediaPreview(null);
+      setNewMessage('');
+      setUploading(false);
+      return;
+    }
+
+    if (!newMessage.trim()) return;
     const { error } = await supabase.from('messages').insert({ conversation_id: selectedConversation.id, sender_id: user.id, content: newMessage.trim() });
     if (!error) {
       setNewMessage('');
@@ -146,6 +261,81 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
     if (query.length < 2) { setSearchResults([]); return; }
     const { data } = await supabase.from('profiles').select('user_id, username, avatar_url').ilike('username', `%${query}%`).neq('user_id', user?.id).limit(10);
     setSearchResults(data || []);
+  };
+
+  const toggleAudio = (url: string) => {
+    if (playingAudio === url) {
+      audioRef.current?.pause();
+      setPlayingAudio(null);
+    } else {
+      if (audioRef.current) audioRef.current.pause();
+      const audio = new Audio(url);
+      audio.onended = () => setPlayingAudio(null);
+      audio.play();
+      audioRef.current = audio;
+      setPlayingAudio(url);
+    }
+  };
+
+  const renderMessageContent = (msg: Message) => {
+    const content = msg.content;
+    const isMine = msg.sender_id === user?.id;
+
+    // Voice message
+    if (content.startsWith('🎤 ')) {
+      const url = content.slice(2).trim();
+      return (
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleAudio(url)}>
+            {playingAudio === url ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </Button>
+          <span className="text-xs">{language === 'hi' ? 'वॉइस संदेश' : language === 'mr' ? 'व्हॉइस संदेश' : 'Voice message'}</span>
+        </div>
+      );
+    }
+
+    // Image/video message
+    if (content.startsWith('📷 ') || content.startsWith('🎬 ')) {
+      const lines = content.split('\n');
+      const urlLine = lines[0].slice(2).trim();
+      const caption = lines.slice(1).join('\n');
+      const isVideo = content.startsWith('🎬');
+
+      return (
+        <div>
+          {isVideo ? (
+            <video src={urlLine} controls className="max-w-[240px] rounded-lg" />
+          ) : (
+            <img src={urlLine} alt="Shared" className="max-w-[240px] rounded-lg cursor-pointer" onClick={() => window.open(urlLine, '_blank')} />
+          )}
+          {caption && <p className="text-sm mt-1">{caption}</p>}
+        </div>
+      );
+    }
+
+    return <p className="text-sm">{content}</p>;
+  };
+
+  // Group messages by date
+  const getDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isToday(date)) return language === 'hi' ? 'आज' : language === 'mr' ? 'आज' : 'Today';
+    if (isYesterday(date)) return language === 'hi' ? 'कल' : language === 'mr' ? 'काल' : 'Yesterday';
+    return format(date, 'MMMM d, yyyy');
+  };
+
+  const messagesWithDateSeparators = () => {
+    const result: { type: 'date' | 'message'; content: string; msg?: Message }[] = [];
+    let lastDate = '';
+    for (const msg of messages) {
+      const dateLabel = getDateLabel(msg.created_at);
+      if (dateLabel !== lastDate) {
+        result.push({ type: 'date', content: dateLabel });
+        lastDate = dateLabel;
+      }
+      result.push({ type: 'message', content: '', msg });
+    }
+    return result;
   };
 
   if (loading) {
@@ -187,7 +377,6 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
             <div className="p-8 text-center text-muted-foreground">
               <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>{language === 'hi' ? 'कोई बातचीत नहीं' : language === 'mr' ? 'कोणतेही संभाषण नाही' : 'No conversations yet'}</p>
-              <p className="text-sm">{language === 'hi' ? 'अन्य किसानों से चैट शुरू करें!' : language === 'mr' ? 'इतर शेतकऱ्यांशी चॅट सुरू करा!' : 'Start chatting with other farmers!'}</p>
             </div>
           ) : (
             conversations.map((conv) => (
@@ -197,10 +386,16 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
                   {conv.unread_count > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">{conv.unread_count}</span>}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="font-medium text-sm truncate">{conv.other_user.username}</p>
-                  {conv.last_message && <p className="text-xs text-muted-foreground truncate">{conv.last_message.content}</p>}
+                  <div className="flex justify-between items-center">
+                    <p className="font-medium text-sm truncate">{conv.other_user.username}</p>
+                    {conv.last_message && <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{formatConversationDate(conv.last_message.created_at)}</span>}
+                  </div>
+                  {conv.last_message && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {conv.last_message.content.startsWith('🎤') ? '🎤 Voice message' : conv.last_message.content.startsWith('📷') ? '📷 Photo' : conv.last_message.content.startsWith('🎬') ? '🎬 Video' : conv.last_message.content}
+                    </p>
+                  )}
                 </div>
-                {conv.last_message && <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: false })}</span>}
               </button>
             ))
           )}
@@ -217,25 +412,73 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
               <div><p className="font-medium">{selectedConversation.other_user.username}</p><p className="text-xs text-muted-foreground">{language === 'hi' ? 'ऑनलाइन' : language === 'mr' ? 'ऑनलाइन' : 'Active now'}</p></div>
             </div>
             <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages.map((msg) => (
-                  <div key={msg.id} className={cn("flex", msg.sender_id === user?.id ? "justify-end" : "justify-start")}>
-                    <div className={cn("max-w-[75%] rounded-2xl px-4 py-2", msg.sender_id === user?.id ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md")}>
-                      <p className="text-sm">{msg.content}</p>
-                      <p className={cn("text-[10px] mt-1", msg.sender_id === user?.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                        {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
-                      </p>
+              <div className="space-y-3">
+                {messagesWithDateSeparators().map((item, idx) => {
+                  if (item.type === 'date') {
+                    return (
+                      <div key={`date-${idx}`} className="flex justify-center my-4">
+                        <span className="text-xs bg-muted px-3 py-1 rounded-full text-muted-foreground">{item.content}</span>
+                      </div>
+                    );
+                  }
+                  const msg = item.msg!;
+                  const isMine = msg.sender_id === user?.id;
+                  return (
+                    <div key={msg.id} className={cn("flex", isMine ? "justify-end" : "justify-start")}>
+                      <div className={cn("max-w-[75%] rounded-2xl px-4 py-2", isMine ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md")}>
+                        {renderMessageContent(msg)}
+                        <p className={cn("text-[10px] mt-1", isMine ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                          {formatMessageTime(msg.created_at)}
+                          {isMine && <span className="ml-1">{msg.read ? '✓✓' : '✓'}</span>}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
-            <div className="p-4 border-t">
-              <div className="flex gap-2">
-                <Input placeholder={language === 'hi' ? 'संदेश लिखें...' : language === 'mr' ? 'संदेश लिहा...' : 'Type a message...'} value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} className="flex-1" />
-                <Button onClick={sendMessage} disabled={!newMessage.trim()}><Send className="h-4 w-4" /></Button>
+
+            {/* Media preview */}
+            {mediaPreview && (
+              <div className="px-4 py-2 border-t bg-muted/30">
+                <div className="relative inline-block">
+                  {selectedMedia?.type.startsWith('video/') ? (
+                    <video src={mediaPreview} className="max-h-24 rounded-lg" />
+                  ) : (
+                    <img src={mediaPreview} alt="Preview" className="max-h-24 rounded-lg" />
+                  )}
+                  <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-5 w-5 rounded-full" onClick={() => { setSelectedMedia(null); setMediaPreview(null); }}><X className="h-3 w-3" /></Button>
+                </div>
               </div>
+            )}
+
+            <div className="p-4 border-t">
+              <div className="flex gap-2 items-center">
+                <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleMediaSelect} className="hidden" />
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                </Button>
+                <Button variant="ghost" size="icon" className={cn("shrink-0", isRecording && "text-red-500 animate-pulse")} onClick={isRecording ? stopRecording : startRecording} disabled={uploading}>
+                  {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5 text-muted-foreground" />}
+                </Button>
+                <Input
+                  placeholder={language === 'hi' ? 'संदेश लिखें...' : language === 'mr' ? 'संदेश लिहा...' : 'Type a message...'}
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  className="flex-1"
+                  disabled={isRecording || uploading}
+                />
+                <Button onClick={sendMessage} disabled={(!newMessage.trim() && !selectedMedia) || uploading || isRecording} className="shrink-0">
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+              {isRecording && (
+                <p className="text-xs text-red-500 mt-1 animate-pulse text-center">
+                  {language === 'hi' ? '🔴 रिकॉर्डिंग...' : language === 'mr' ? '🔴 रेकॉर्डिंग...' : '🔴 Recording...'}
+                </p>
+              )}
             </div>
           </>
         ) : (
@@ -243,7 +486,6 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
             <div className="text-center">
               <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">{language === 'hi' ? 'बातचीत चुनें' : language === 'mr' ? 'संभाषण निवडा' : 'Select a conversation'}</p>
-              <p className="text-sm">{language === 'hi' ? 'या नई शुरू करें' : language === 'mr' ? 'किंवा नवीन सुरू करा' : 'Or start a new one'}</p>
             </div>
           </div>
         )}

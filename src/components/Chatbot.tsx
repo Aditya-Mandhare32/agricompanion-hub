@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { MessageCircle, X, Send, Bot, User, Volume2, VolumeX, Loader2, Maximize2, Minimize2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +36,14 @@ const placeholders = {
   mr: "पाटीलला काहीही विचारा..."
 };
 
+type Size = 'small' | 'medium' | 'large';
+
+const sizeConfig = {
+  small: { width: 350, height: 450 },
+  medium: { width: 400, height: 550 },
+  large: { width: 500, height: 650 },
+};
+
 export function Chatbot() {
   const { language } = useApp();
   const lang = language as 'en' | 'hi' | 'mr';
@@ -47,7 +55,22 @@ export function Chatbot() {
   const [isTyping, setIsTyping] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [chatSize, setChatSize] = useState<Size>('small');
+  const [position, setPosition] = useState({ x: -1, y: -1 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const chatRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize position
+  useEffect(() => {
+    if (position.x === -1) {
+      setPosition({
+        x: window.innerWidth - sizeConfig[chatSize].width - 16,
+        y: window.innerHeight - sizeConfig[chatSize].height - 80,
+      });
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     setMessages(prev => {
@@ -62,16 +85,65 @@ export function Chatbot() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Dragging logic
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!chatRef.current) return;
+    const rect = chatRef.current.getBoundingClientRect();
+    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    setIsDragging(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = Math.max(0, Math.min(window.innerWidth - sizeConfig[chatSize].width, e.clientX - dragOffset.current.x));
+      const y = Math.max(0, Math.min(window.innerHeight - sizeConfig[chatSize].height, e.clientY - dragOffset.current.y));
+      setPosition({ x, y });
+    };
+    const handleMouseUp = () => setIsDragging(false);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
+  }, [isDragging, chatSize]);
+
+  // Touch dragging
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!chatRef.current) return;
+    const rect = chatRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    dragOffset.current = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    setIsDragging(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const x = Math.max(0, Math.min(window.innerWidth - sizeConfig[chatSize].width, touch.clientX - dragOffset.current.x));
+      const y = Math.max(0, Math.min(window.innerHeight - sizeConfig[chatSize].height, touch.clientY - dragOffset.current.y));
+      setPosition({ x, y });
+    };
+    const handleTouchEnd = () => setIsDragging(false);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+    return () => { window.removeEventListener('touchmove', handleTouchMove); window.removeEventListener('touchend', handleTouchEnd); };
+  }, [isDragging, chatSize]);
+
+  const cycleSize = () => {
+    const sizes: Size[] = ['small', 'medium', 'large'];
+    const idx = sizes.indexOf(chatSize);
+    const next = sizes[(idx + 1) % sizes.length];
+    setChatSize(next);
+    // Adjust position to stay in bounds
+    setPosition(prev => ({
+      x: Math.min(prev.x, window.innerWidth - sizeConfig[next].width),
+      y: Math.min(prev.y, window.innerHeight - sizeConfig[next].height),
+    }));
+  };
+
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: text,
-      timestamp: new Date(),
-    };
-
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: text, timestamp: new Date() };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
@@ -87,23 +159,16 @@ export function Chatbot() {
       });
 
       if (error) throw error;
-
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'bot',
-        content: data.reply || (lang === 'hi' ? 'माफ करें, कोई त्रुटि हुई।' : lang === 'mr' ? 'क्षमा करा, त्रुटी झाली.' : 'Sorry, something went wrong.'),
+        content: data.reply || 'Sorry, something went wrong.',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, botMessage]);
     } catch (err) {
       console.error('Chatbot error:', err);
-      const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'bot',
-        content: lang === 'hi' ? 'नेटवर्क त्रुटि। कृपया पुनः प्रयास करें।' : lang === 'mr' ? 'नेटवर्क त्रुटी. कृपया पुन्हा प्रयत्न करा.' : 'Network error. Please try again.',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMsg]);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'bot', content: 'Network error. Please try again.', timestamp: new Date() }]);
     } finally {
       setIsTyping(false);
     }
@@ -116,7 +181,6 @@ export function Chatbot() {
       setSpeakingMsgId(null);
       return;
     }
-
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(msg.content.replace(/[*#_`]/g, ''));
     if (lang === 'hi') utterance.lang = 'hi-IN';
@@ -125,7 +189,6 @@ export function Chatbot() {
     utterance.rate = 0.9;
     utterance.onend = () => { setIsSpeaking(false); setSpeakingMsgId(null); };
     utterance.onerror = () => { setIsSpeaking(false); setSpeakingMsgId(null); };
-    
     setIsSpeaking(true);
     setSpeakingMsgId(msg.id);
     window.speechSynthesis.speak(utterance);
@@ -135,6 +198,8 @@ export function Chatbot() {
     e.preventDefault();
     sendMessage(input);
   };
+
+  const currentSize = sizeConfig[chatSize];
 
   return (
     <>
@@ -146,64 +211,76 @@ export function Chatbot() {
       </button>
 
       <div
-        className={`fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 flex h-[70vh] max-h-[500px] w-[calc(100vw-2rem)] max-w-[350px] flex-col rounded-2xl bg-card shadow-2xl border border-border transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}
+        ref={chatRef}
+        style={{
+          position: 'fixed',
+          left: position.x >= 0 ? position.x : undefined,
+          top: position.y >= 0 ? position.y : undefined,
+          right: position.x < 0 ? 16 : undefined,
+          bottom: position.y < 0 ? 80 : undefined,
+          width: `min(${currentSize.width}px, calc(100vw - 2rem))`,
+          height: `min(${currentSize.height}px, 80vh)`,
+          zIndex: 50,
+        }}
+        className={`flex flex-col rounded-2xl bg-card shadow-2xl border border-border transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border hero-gradient rounded-t-2xl">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-foreground/20">
-              <Bot className="h-5 w-5 text-primary-foreground" />
+        {/* Header - draggable */}
+        <div
+          className="flex items-center justify-between p-3 border-b border-border hero-gradient rounded-t-2xl cursor-move select-none"
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+        >
+          <div className="flex items-center gap-2">
+            <GripVertical className="h-4 w-4 text-primary-foreground/50" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-foreground/20">
+              <Bot className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <h3 className="font-semibold text-primary-foreground">Patil 🌾</h3>
-              <p className="text-xs text-primary-foreground/70">
+              <h3 className="font-semibold text-sm text-primary-foreground">Patil 🌾</h3>
+              <p className="text-[10px] text-primary-foreground/70">
                 {lang === 'hi' ? 'AI कृषि सहायक' : lang === 'mr' ? 'AI शेती सहाय्यक' : 'AI Farm Assistant'}
               </p>
             </div>
           </div>
-          <button onClick={() => setIsOpen(false)} className="rounded-full p-1 hover:bg-primary-foreground/20 transition-colors">
-            <X className="h-5 w-5 text-primary-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={cycleSize} className="rounded-full p-1 hover:bg-primary-foreground/20 transition-colors" title="Resize">
+              {chatSize === 'large' ? <Minimize2 className="h-4 w-4 text-primary-foreground" /> : <Maximize2 className="h-4 w-4 text-primary-foreground" />}
+            </button>
+            <button onClick={() => setIsOpen(false)} className="rounded-full p-1 hover:bg-primary-foreground/20 transition-colors">
+              <X className="h-4 w-4 text-primary-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
           {messages.map((message) => (
             <div key={message.id} className={`flex gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${message.role === 'user' ? 'bg-primary' : 'bg-secondary'}`}>
-                {message.role === 'user' ? <User className="h-4 w-4 text-primary-foreground" /> : <Bot className="h-4 w-4 text-secondary-foreground" />}
+              <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${message.role === 'user' ? 'bg-primary' : 'bg-secondary'}`}>
+                {message.role === 'user' ? <User className="h-3.5 w-3.5 text-primary-foreground" /> : <Bot className="h-3.5 w-3.5 text-secondary-foreground" />}
               </div>
-              <div className="max-w-[75%]">
-                <div className={`rounded-2xl px-4 py-2 ${message.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted rounded-tl-none'}`}>
+              <div className="max-w-[80%]">
+                <div className={`rounded-2xl px-3 py-2 ${message.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted rounded-tl-none'}`}>
                   <p className="text-sm whitespace-pre-line">{message.content}</p>
                 </div>
                 {message.role === 'bot' && (
-                  <button
-                    onClick={() => speakMessage(message)}
-                    className="mt-1 p-1 rounded-full hover:bg-muted transition-colors"
-                    title={lang === 'hi' ? 'सुनें' : lang === 'mr' ? 'ऐका' : 'Listen'}
-                  >
-                    {isSpeaking && speakingMsgId === message.id 
-                      ? <VolumeX className="h-3.5 w-3.5 text-primary" /> 
-                      : <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  <button onClick={() => speakMessage(message)} className="mt-0.5 p-1 rounded-full hover:bg-muted transition-colors" title="Listen">
+                    {isSpeaking && speakingMsgId === message.id
+                      ? <VolumeX className="h-3 w-3 text-primary" />
+                      : <Volume2 className="h-3 w-3 text-muted-foreground" />
                     }
                   </button>
                 )}
               </div>
             </div>
           ))}
-          
           {isTyping && (
             <div className="flex gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
-                <Bot className="h-4 w-4 text-secondary-foreground" />
-              </div>
-              <div className="bg-muted rounded-2xl rounded-tl-none px-4 py-2">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary"><Bot className="h-3.5 w-3.5 text-secondary-foreground" /></div>
+              <div className="bg-muted rounded-2xl rounded-tl-none px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-xs text-muted-foreground">
-                    {lang === 'hi' ? 'सोच रहा हूं...' : lang === 'mr' ? 'विचार करतोय...' : 'Thinking...'}
-                  </span>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  <span className="text-xs text-muted-foreground">{lang === 'hi' ? 'सोच रहा हूं...' : lang === 'mr' ? 'विचार करतोय...' : 'Thinking...'}</span>
                 </div>
               </div>
             </div>
@@ -212,22 +289,16 @@ export function Chatbot() {
         </div>
 
         {/* Quick Questions */}
-        <div className="px-4 pb-2">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="px-3 pb-1">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
             {quickQuestions.map((q, index) => (
-              <button
-                key={index}
-                onClick={() => sendMessage(q[lang])}
-                className="shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-              >
-                {q[lang]}
-              </button>
+              <button key={index} onClick={() => sendMessage(q[lang])} className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">{q[lang]}</button>
             ))}
           </div>
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 p-4 border-t border-border">
+        <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3 border-t border-border">
           <input
             type="text"
             value={input}
@@ -236,7 +307,7 @@ export function Chatbot() {
             className="flex-1 input-field py-2 text-sm"
             disabled={isTyping}
           />
-          <Button type="submit" size="icon" disabled={!input.trim() || isTyping}>
+          <Button type="submit" size="icon" disabled={!input.trim() || isTyping} className="h-8 w-8">
             <Send className="h-4 w-4" />
           </Button>
         </form>

@@ -2,13 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Heart, MessageCircle, Bookmark, Share2, Loader2, BookmarkX, MapPin
-} from 'lucide-react';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Heart, MessageCircle, Bookmark, Loader2, BookmarkX } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -39,6 +37,7 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
   const { language } = useApp();
   const [posts, setPosts] = useState<SavedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPost, setSelectedPost] = useState<SavedPost | null>(null);
 
   useEffect(() => {
     if (user) fetchSavedPosts();
@@ -47,28 +46,15 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
   const fetchSavedPosts = async () => {
     if (!user) return;
     const { data: savedData } = await supabase
-      .from('saved_posts')
-      .select('post_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (!savedData || savedData.length === 0) {
-      setPosts([]);
-      setLoading(false);
-      return;
-    }
+      .from('saved_posts').select('post_id').eq('user_id', user.id).order('created_at', { ascending: false });
+    if (!savedData || savedData.length === 0) { setPosts([]); setLoading(false); return; }
 
     const postIds = savedData.map(s => s.post_id);
-    const { data: postsData } = await supabase
-      .from('posts')
-      .select('*')
-      .in('id', postIds);
-
+    const { data: postsData } = await supabase.from('posts').select('*').in('id', postIds);
     if (!postsData) { setPosts([]); setLoading(false); return; }
 
     const userIds = [...new Set(postsData.map(p => p.user_id))];
-    const { data: profiles } = await supabase.from('profiles')
-      .select('user_id, username, avatar_url, location').in('user_id', userIds);
+    const { data: profiles } = await supabase.from('profiles').select('user_id, username, avatar_url, location').in('user_id', userIds);
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
     const { data: likes } = await supabase.from('post_likes').select('post_id').eq('user_id', user.id);
@@ -88,7 +74,6 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
         is_liked: likedIds.has(post.id),
       };
     }));
-
     setPosts(enriched);
     setLoading(false);
   };
@@ -97,14 +82,8 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
     if (!user) return;
     await supabase.from('saved_posts').delete().eq('post_id', postId).eq('user_id', user.id);
     setPosts(prev => prev.filter(p => p.id !== postId));
+    setSelectedPost(null);
     toast.success(language === 'hi' ? 'हटाया गया' : language === 'mr' ? 'काढले' : 'Removed from saved');
-  };
-
-  const toggleLike = async (postId: string, isLiked: boolean) => {
-    if (!user) return;
-    if (isLiked) await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', user.id);
-    else await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
-    fetchSavedPosts();
   };
 
   if (loading) {
@@ -126,46 +105,62 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
   }
 
   return (
-    <div className="space-y-4">
-      {posts.map((post) => (
-        <Card key={post.id} className="overflow-hidden">
-          <CardHeader className="flex-row items-start gap-3 p-4">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={post.profile?.avatar_url} />
-              <AvatarFallback>{post.profile?.username?.[0]?.toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">{post.profile?.username}</span>
-                <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
-              </div>
-              {post.profile?.location && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{post.profile.location}</p>
+    <>
+      <div className="grid grid-cols-3 gap-1">
+        {posts.map((post) => (
+          <div key={post.id} className="relative group cursor-pointer" onClick={() => setSelectedPost(post)}>
+            <AspectRatio ratio={1}>
+              {post.image_url ? (
+                <img src={post.image_url} alt="Post" className="w-full h-full object-cover rounded-sm" />
+              ) : (
+                <div className="w-full h-full bg-muted flex items-center justify-center rounded-sm p-2">
+                  <p className="text-xs text-muted-foreground line-clamp-4 text-center">{post.content}</p>
+                </div>
               )}
+            </AspectRatio>
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 rounded-sm">
+              <span className="text-white text-sm flex items-center gap-1"><Heart className="h-4 w-4 fill-white" />{post.likes_count}</span>
+              <span className="text-white text-sm flex items-center gap-1"><MessageCircle className="h-4 w-4 fill-white" />{post.comments_count}</span>
             </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-3">
-            <p className="text-sm whitespace-pre-wrap">{post.content}</p>
-            {post.image_url && <img src={post.image_url} alt="Post" className="mt-3 rounded-lg w-full object-cover max-h-96" />}
-          </CardContent>
-          <CardFooter className="px-4 py-3 border-t">
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" className={`gap-2 ${post.is_liked ? 'text-red-500' : ''}`} onClick={() => toggleLike(post.id, post.is_liked)}>
-                  <Heart className={`h-5 w-5 ${post.is_liked ? 'fill-current' : ''}`} /><span className="text-sm">{post.likes_count}</span>
-                </Button>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <MessageCircle className="h-5 w-5" /><span className="text-sm">{post.comments_count}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Post Detail Dialog */}
+      <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
+        <DialogContent className="max-w-md">
+          {selectedPost && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={selectedPost.profile?.avatar_url} />
+                    <AvatarFallback>{selectedPost.profile?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <DialogTitle className="text-sm">{selectedPost.profile?.username}</DialogTitle>
+                    <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(selectedPost.created_at), { addSuffix: true })}</p>
+                  </div>
+                </div>
+              </DialogHeader>
+              {selectedPost.image_url && (
+                <AspectRatio ratio={1}><img src={selectedPost.image_url} alt="Post" className="w-full h-full object-cover rounded-lg" /></AspectRatio>
+              )}
+              <p className="text-sm whitespace-pre-wrap">{selectedPost.content}</p>
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div className="flex gap-4">
+                  <span className="text-sm text-muted-foreground flex items-center gap-1"><Heart className="h-4 w-4" />{selectedPost.likes_count}</span>
+                  <span className="text-sm text-muted-foreground flex items-center gap-1"><MessageCircle className="h-4 w-4" />{selectedPost.comments_count}</span>
+                </div>
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => unsavePost(selectedPost.id)}>
+                  <BookmarkX className="h-4 w-4 mr-1" />
+                  {language === 'hi' ? 'हटाएं' : language === 'mr' ? 'काढा' : 'Unsave'}
                 </Button>
               </div>
-              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => unsavePost(post.id)}>
-                <BookmarkX className="h-5 w-5 mr-1" />
-                {language === 'hi' ? 'हटाएं' : language === 'mr' ? 'काढा' : 'Unsave'}
-              </Button>
-            </div>
-          </CardFooter>
-        </Card>
-      ))}
-    </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

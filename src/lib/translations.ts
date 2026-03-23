@@ -129,6 +129,7 @@ export const translations = {
   hi: {
     // Navigation
     home: 'होम',
+    dashboard: 'डैशबोर्ड',
     soilReport: 'मिट्टी रिपोर्ट',
     crops: 'फसलें',
     calendar: 'कैलेंडर',

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/context/AppContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import SoilReport from "./pages/SoilReport";

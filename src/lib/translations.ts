@@ -4,6 +4,7 @@ export const translations = {
   en: {
     // Navigation
     home: 'Home',
+    dashboard: 'Dashboard',
     soilReport: 'Soil Report',
     crops: 'Crops',
     calendar: 'Calendar',

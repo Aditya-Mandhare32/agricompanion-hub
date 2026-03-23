@@ -33,7 +33,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navItems = [
-  { path: '/', label: 'home', icon: Leaf },
+  { path: '/', label: 'home', icon: Leaf, authOnly: false },
+  { path: '/dashboard', label: 'dashboard', icon: BarChart3, authOnly: true },
   { path: '/soil-report', label: 'soilReport', icon: FileText },
   { path: '/calendar', label: 'calendar', icon: Calendar },
   { path: '/community', label: 'community', icon: Users },

@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, User, Newspaper } from 'lucide-react';
+import { Home, Users, User, Newspaper, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { path: '/', icon: Home, label: 'Home' },
+  { path: '/', icon: Home, label: 'Home', authOnly: false },
+  { path: '/dashboard', icon: BarChart3, label: 'Dashboard', authOnly: true },
   { path: '/community', icon: Users, label: 'Community' },
   { path: '/news', icon: Newspaper, label: 'News' },
   { path: '/profile', icon: User, label: 'Profile' },
@@ -22,7 +23,9 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border md:hidden">
       <div className="flex items-center justify-around h-16 px-2">
-        {navItems.map((item) => {
+        {navItems
+          .filter(item => !item.authOnly || user)
+          .map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
           

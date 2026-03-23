@@ -4,6 +4,7 @@ export const translations = {
   en: {
     // Navigation
     home: 'Home',
+    dashboard: 'Dashboard',
     soilReport: 'Soil Report',
     crops: 'Crops',
     calendar: 'Calendar',
@@ -128,6 +129,7 @@ export const translations = {
   hi: {
     // Navigation
     home: 'होम',
+    dashboard: 'डैशबोर्ड',
     soilReport: 'मिट्टी रिपोर्ट',
     crops: 'फसलें',
     calendar: 'कैलेंडर',
@@ -252,6 +254,7 @@ export const translations = {
   mr: {
     // Navigation
     home: 'होम',
+    dashboard: 'डॅशबोर्ड',
     soilReport: 'माती अहवाल',
     crops: 'पिके',
     calendar: 'कॅलेंडर',

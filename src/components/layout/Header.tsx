@@ -15,7 +15,8 @@ import {
   Calendar,
   Users,
   Newspaper,
-  MessageCircle
+  MessageCircle,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,7 +34,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navItems = [
-  { path: '/', label: 'home', icon: Leaf },
+  { path: '/', label: 'home', icon: Leaf, authOnly: false },
+  { path: '/dashboard', label: 'dashboard', icon: BarChart3, authOnly: true },
   { path: '/soil-report', label: 'soilReport', icon: FileText },
   { path: '/calendar', label: 'calendar', icon: Calendar },
   { path: '/community', label: 'community', icon: Users },
@@ -65,7 +67,9 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {navItems.map((item) => {
+          {navItems
+            .filter(item => !item.authOnly || user)
+            .map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (

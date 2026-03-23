@@ -67,7 +67,9 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {navItems.map((item) => {
+          {navItems
+            .filter(item => !item.authOnly || user)
+            .map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (

@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, User, Newspaper } from 'lucide-react';
+import { Home, Users, User, Newspaper, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { path: '/', icon: Home, label: 'Home' },
+  { path: '/', icon: Home, label: 'Home', authOnly: false },
+  { path: '/dashboard', icon: BarChart3, label: 'Dashboard', authOnly: true },
   { path: '/community', icon: Users, label: 'Community' },
   { path: '/news', icon: Newspaper, label: 'News' },
   { path: '/profile', icon: User, label: 'Profile' },

@@ -254,6 +254,7 @@ export const translations = {
   mr: {
     // Navigation
     home: 'होम',
+    dashboard: 'डॅशबोर्ड',
     soilReport: 'माती अहवाल',
     crops: 'पिके',
     calendar: 'कॅलेंडर',

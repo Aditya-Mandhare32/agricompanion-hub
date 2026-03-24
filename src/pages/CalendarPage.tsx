@@ -133,6 +133,13 @@ export default function CalendarPage() {
   const { t, events, addEvent, updateEvent, deleteEvent, language } = useApp();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  
+  // DB-backed data
+  const { data: dbEvents } = useCalendarEvents();
+  const { data: activeCrops } = useActiveCrops();
+  const { data: allDbCrops } = useAllCropsFromDB();
+  const deleteCropMutation = useDeleteCrop();
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
@@ -144,6 +151,8 @@ export default function CalendarPage() {
   const [editingCycle, setEditingCycle] = useState<CropCycle | null>(null);
   const [selectedRegion, setSelectedRegion] = useState('Maharashtra');
   const [isShopOpen, setIsShopOpen] = useState(false);
+  const [isAddOtherOpen, setIsAddOtherOpen] = useState(false);
+  const [deletingCropId, setDeletingCropId] = useState<string | null>(null);
   
   const [newEvent, setNewEvent] = useState({
     cropName: '',

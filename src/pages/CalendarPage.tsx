@@ -675,6 +675,41 @@ export default function CalendarPage() {
               </Card>
             )}
 
+            {/* Active DB Crops with Remove Button */}
+            {activeCrops && activeCrops.length > 0 && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sprout className="h-5 w-5 text-primary" />
+                    {language === 'hi' ? 'सक्रिय फसलें' : language === 'mr' ? 'सक्रिय पिके' : 'Active Crops'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {activeCrops.map((crop) => (
+                      <div key={crop.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                        <div>
+                          <h4 className="font-semibold">{crop.crop_name}</h4>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            {crop.crop_category && <Badge variant="outline" className="text-xs">{crop.crop_category}</Badge>}
+                            {crop.field_name && <span>{crop.field_name}</span>}
+                          </div>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setDeletingCropId(crop.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />
+                          {language === 'hi' ? 'हटाएं' : language === 'mr' ? 'काढा' : 'Remove'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Multi-Crop Management Section */}
             <Card className="shadow-lg">
               <CardHeader>
@@ -689,14 +724,22 @@ export default function CalendarPage() {
                     <Leaf className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p>{language === 'hi' ? 'कोई फसल चक्र नहीं जोड़ा गया' : language === 'mr' ? 'कोणतेही पीक चक्र जोडलेले नाही' : 'No crop cycles added yet'}</p>
                     <p className="text-sm mt-1">{language === 'hi' ? 'एक साथ कई फसलों का प्रबंधन करने के लिए फसल चक्र जोड़ें' : language === 'mr' ? 'एकाच वेळी अनेक पिकांचे व्यवस्थापन करण्यासाठी पीक चक्र जोडा' : 'Add crop cycles to manage multiple crops simultaneously'}</p>
-                    <Button 
-                      variant="outline" 
-                      className="mt-4"
-                      onClick={() => setIsAddCycleDialogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      {language === 'hi' ? 'पहला फसल चक्र जोड़ें' : language === 'mr' ? 'पहिले पीक चक्र जोडा' : 'Add First Crop Cycle'}
-                    </Button>
+                    <div className="flex gap-2 justify-center mt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsAddCycleDialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        {language === 'hi' ? 'फसल चक्र जोड़ें' : language === 'mr' ? 'पीक चक्र जोडा' : 'Add Crop Cycle'}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsAddOtherOpen(true)}
+                      >
+                        <Sprout className="h-4 w-4 mr-2" />
+                        {language === 'hi' ? 'अन्य जोड़ें' : language === 'mr' ? 'इतर जोडा' : 'Add Other'}
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

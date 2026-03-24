@@ -439,6 +439,16 @@ export default function CalendarPage() {
                 </DialogContent>
               </Dialog>
 
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="bg-white/10 text-white border-white/30 hover:bg-white/20"
+                onClick={() => setIsAddOtherOpen(true)}
+              >
+                <Sprout className="h-5 w-5 mr-2" />
+                {language === 'hi' ? 'अन्य जोड़ें' : language === 'mr' ? 'इतर जोडा' : 'Add Other'}
+              </Button>
+
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="lg" className="bg-white text-primary hover:bg-white/90 shadow-lg">

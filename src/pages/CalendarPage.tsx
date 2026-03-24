@@ -59,6 +59,21 @@ import { MonthGridView } from '@/components/calendar/MonthGridView';
 import { TimelineView } from '@/components/calendar/TimelineView';
 import { CropCycleEditDialog } from '@/components/calendar/CropCycleEditDialog';
 import { ShopSection } from '@/components/calendar/ShopSection';
+import { AddOtherCropDialog } from '@/components/calendar/AddOtherCropDialog';
+import { useCalendarEvents, useActiveCrops, useDeleteCrop, useAllCropsFromDB } from '@/hooks/useCrops';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // Crop cycle type for tracking multiple crops
 interface CropCycle {
@@ -118,6 +133,13 @@ export default function CalendarPage() {
   const { t, events, addEvent, updateEvent, deleteEvent, language } = useApp();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  
+  // DB-backed data
+  const { data: dbEvents } = useCalendarEvents();
+  const { data: activeCrops } = useActiveCrops();
+  const { data: allDbCrops } = useAllCropsFromDB();
+  const deleteCropMutation = useDeleteCrop();
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
@@ -129,6 +151,8 @@ export default function CalendarPage() {
   const [editingCycle, setEditingCycle] = useState<CropCycle | null>(null);
   const [selectedRegion, setSelectedRegion] = useState('Maharashtra');
   const [isShopOpen, setIsShopOpen] = useState(false);
+  const [isAddOtherOpen, setIsAddOtherOpen] = useState(false);
+  const [deletingCropId, setDeletingCropId] = useState<string | null>(null);
   
   const [newEvent, setNewEvent] = useState({
     cropName: '',
@@ -415,6 +439,16 @@ export default function CalendarPage() {
                 </DialogContent>
               </Dialog>
 
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="bg-white/10 text-white border-white/30 hover:bg-white/20"
+                onClick={() => setIsAddOtherOpen(true)}
+              >
+                <Sprout className="h-5 w-5 mr-2" />
+                {language === 'hi' ? 'अन्य जोड़ें' : language === 'mr' ? 'इतर जोडा' : 'Add Other'}
+              </Button>
+
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="lg" className="bg-white text-primary hover:bg-white/90 shadow-lg">
@@ -641,6 +675,41 @@ export default function CalendarPage() {
               </Card>
             )}
 
+            {/* Active DB Crops with Remove Button */}
+            {activeCrops && activeCrops.length > 0 && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sprout className="h-5 w-5 text-primary" />
+                    {language === 'hi' ? 'सक्रिय फसलें' : language === 'mr' ? 'सक्रिय पिके' : 'Active Crops'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {activeCrops.map((crop) => (
+                      <div key={crop.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                        <div>
+                          <h4 className="font-semibold">{crop.crop_name}</h4>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            {crop.crop_category && <Badge variant="outline" className="text-xs">{crop.crop_category}</Badge>}
+                            {crop.field_name && <span>{crop.field_name}</span>}
+                          </div>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setDeletingCropId(crop.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />
+                          {language === 'hi' ? 'हटाएं' : language === 'mr' ? 'काढा' : 'Remove'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Multi-Crop Management Section */}
             <Card className="shadow-lg">
               <CardHeader>
@@ -655,14 +724,22 @@ export default function CalendarPage() {
                     <Leaf className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p>{language === 'hi' ? 'कोई फसल चक्र नहीं जोड़ा गया' : language === 'mr' ? 'कोणतेही पीक चक्र जोडलेले नाही' : 'No crop cycles added yet'}</p>
                     <p className="text-sm mt-1">{language === 'hi' ? 'एक साथ कई फसलों का प्रबंधन करने के लिए फसल चक्र जोड़ें' : language === 'mr' ? 'एकाच वेळी अनेक पिकांचे व्यवस्थापन करण्यासाठी पीक चक्र जोडा' : 'Add crop cycles to manage multiple crops simultaneously'}</p>
-                    <Button 
-                      variant="outline" 
-                      className="mt-4"
-                      onClick={() => setIsAddCycleDialogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      {language === 'hi' ? 'पहला फसल चक्र जोड़ें' : language === 'mr' ? 'पहिले पीक चक्र जोडा' : 'Add First Crop Cycle'}
-                    </Button>
+                    <div className="flex gap-2 justify-center mt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsAddCycleDialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        {language === 'hi' ? 'फसल चक्र जोड़ें' : language === 'mr' ? 'पीक चक्र जोडा' : 'Add Crop Cycle'}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsAddOtherOpen(true)}
+                      >
+                        <Sprout className="h-4 w-4 mr-2" />
+                        {language === 'hi' ? 'अन्य जोड़ें' : language === 'mr' ? 'इतर जोडा' : 'Add Other'}
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -913,6 +990,43 @@ export default function CalendarPage() {
 
       {/* Shop Section */}
       <ShopSection isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} />
+
+      {/* Add Other Crop Dialog */}
+      <AddOtherCropDialog
+        isOpen={isAddOtherOpen}
+        onClose={() => setIsAddOtherOpen(false)}
+        language={language}
+      />
+
+      {/* Delete Crop Confirmation */}
+      <AlertDialog open={!!deletingCropId} onOpenChange={() => setDeletingCropId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === 'hi' ? 'फसल हटाएं?' : language === 'mr' ? 'पीक काढायचे?' : 'Remove Crop?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === 'hi' ? 'यह क्रिया पूर्ववत नहीं की जा सकती। फसल और उसके सभी कैलेंडर इवेंट हटा दिए जाएंगे।' :
+               language === 'mr' ? 'ही क्रिया पूर्ववत केली जाऊ शकत नाही. पीक आणि त्याचे सर्व कॅलेंडर इव्हेंट काढले जातील.' :
+               'This action cannot be undone. The crop and all its calendar events will be removed.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{language === 'hi' ? 'रद्द करें' : language === 'mr' ? 'रद्द करा' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deletingCropId) {
+                  deleteCropMutation.mutate(deletingCropId);
+                  setDeletingCropId(null);
+                }
+              }}
+            >
+              {language === 'hi' ? 'हटाएं' : language === 'mr' ? 'काढा' : 'Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

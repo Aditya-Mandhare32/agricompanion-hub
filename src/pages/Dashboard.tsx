@@ -210,7 +210,7 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // Active crops from crop_history
+  // Active crops from crop_history - using shared pattern
   const { data: crops, isLoading: cropsLoading } = useQuery({
     queryKey: ['activeCrops', user?.id],
     queryFn: async () => {
@@ -219,7 +219,7 @@ export default function Dashboard() {
         .select('*')
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false });
-      if (error) throw error;
+      if (error) { console.error('Crops fetch error:', error); throw error; }
       return data || [];
     },
     enabled: !!user?.id,

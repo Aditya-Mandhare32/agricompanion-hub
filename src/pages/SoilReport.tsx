@@ -678,8 +678,12 @@ export default function SoilReport() {
                 </Card>
               )}
 
+              {/* Fertilizer Recommendations Table - inside analysis results */}
+              <FertilizerTable soilData={soilParams} />
+
+              {/* Crop Recommendation button - at the very end */}
               {aiAnalysis.cropRecommendations && aiAnalysis.cropRecommendations.length > 0 && (
-                <div className="flex justify-center">
+                <div className="flex justify-center pt-4">
                   <Button onClick={() => setShowCalendarModal(true)} className="bg-primary" size="lg">
                     <Calendar className="h-5 w-5 mr-2" />
                     {language === 'hi' ? 'फसल कैलेंडर में जोड़ें' : 
@@ -691,8 +695,8 @@ export default function SoilReport() {
             </div>
           )}
 
-          {/* Fertilizer Recommendations Table */}
-          {soilParams && (
+          {/* Fertilizer table when no AI analysis yet but params exist */}
+          {soilParams && !aiAnalysis && (
             <div className="mt-8">
               <FertilizerTable soilData={soilParams} />
             </div>

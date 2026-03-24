@@ -85,12 +85,16 @@ You must respond with a valid JSON object (no markdown, no code blocks) with thi
 }
 
 IMPORTANT GUIDELINES:
-1. Recommend crops across multiple categories: Vegetables, Fruits, Pulses, Cereals, Oilseeds, Flowers, Cash Crops, Fodder - not just vegetables
-2. Include at least 6-8 crop recommendations across different categories
+1. Recommend crops across multiple categories: Vegetables, Fruits, Pulses, Cereals, Oilseeds, Flowers, Cash Crops, Fodder, Millets, Medicinal - not just vegetables
+2. Include at least 8-10 crop recommendations across different categories
 3. Provide specific quantities in farmer-friendly units (kg/acre, tons/acre, bags/acre)
 4. For fertilizers, specify exact NPK ratios and brand names if applicable
 5. Recovery guidance should include both chemical and organic solutions
-6. All text must be in the target language including crop names, fertilizer names, and all explanations`;
+6. All text must be in the target language including crop names, fertilizer names, and all explanations
+7. Base recommendations on ICAR verified agricultural data and Indian agronomy standards
+8. Match crop suitability with the provided soil NPK, pH, temperature, humidity and rainfall values
+9. Use real cost estimates and yield ranges from Indian agricultural data
+10. Consider the soil texture when recommending crops`;
 
     const userPrompt = `Analyze this soil data and provide comprehensive recommendations:
 

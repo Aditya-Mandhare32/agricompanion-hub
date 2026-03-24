@@ -990,6 +990,43 @@ export default function CalendarPage() {
 
       {/* Shop Section */}
       <ShopSection isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} />
+
+      {/* Add Other Crop Dialog */}
+      <AddOtherCropDialog
+        isOpen={isAddOtherOpen}
+        onClose={() => setIsAddOtherOpen(false)}
+        language={language}
+      />
+
+      {/* Delete Crop Confirmation */}
+      <AlertDialog open={!!deletingCropId} onOpenChange={() => setDeletingCropId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === 'hi' ? 'फसल हटाएं?' : language === 'mr' ? 'पीक काढायचे?' : 'Remove Crop?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === 'hi' ? 'यह क्रिया पूर्ववत नहीं की जा सकती। फसल और उसके सभी कैलेंडर इवेंट हटा दिए जाएंगे।' :
+               language === 'mr' ? 'ही क्रिया पूर्ववत केली जाऊ शकत नाही. पीक आणि त्याचे सर्व कॅलेंडर इव्हेंट काढले जातील.' :
+               'This action cannot be undone. The crop and all its calendar events will be removed.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{language === 'hi' ? 'रद्द करें' : language === 'mr' ? 'रद्द करा' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deletingCropId) {
+                  deleteCropMutation.mutate(deletingCropId);
+                  setDeletingCropId(null);
+                }
+              }}
+            >
+              {language === 'hi' ? 'हटाएं' : language === 'mr' ? 'काढा' : 'Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

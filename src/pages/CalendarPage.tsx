@@ -59,6 +59,21 @@ import { MonthGridView } from '@/components/calendar/MonthGridView';
 import { TimelineView } from '@/components/calendar/TimelineView';
 import { CropCycleEditDialog } from '@/components/calendar/CropCycleEditDialog';
 import { ShopSection } from '@/components/calendar/ShopSection';
+import { AddOtherCropDialog } from '@/components/calendar/AddOtherCropDialog';
+import { useCalendarEvents, useActiveCrops, useDeleteCrop, useAllCropsFromDB } from '@/hooks/useCrops';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // Crop cycle type for tracking multiple crops
 interface CropCycle {

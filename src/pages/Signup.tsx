@@ -66,7 +66,7 @@ export default function Signup() {
       toast.error(error.message || 'Failed to create account');
     } else {
       toast.success('Account created successfully! You can now sign in.');
-      navigate('/login');
+      navigate('/dashboard');
     }
     
     setIsLoading(false);

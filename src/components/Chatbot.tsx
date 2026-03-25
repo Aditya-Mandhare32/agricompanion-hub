@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, X, Send, Bot, User, Volume2, VolumeX, Loader2, Maximize2, Minimize2, GripVertical } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Volume2, VolumeX, Loader2, Maximize2, Minimize2, GripVertical, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -12,9 +13,7 @@ interface Message {
 }
 
 interface QuickQuestion {
-  en: string;
-  hi: string;
-  mr: string;
+  en: string; hi: string; mr: string;
 }
 
 const quickQuestions: QuickQuestion[] = [
@@ -25,23 +24,22 @@ const quickQuestions: QuickQuestion[] = [
 ];
 
 const greetings = {
-  en: "Namaste! 🙏 I'm Patil, your farming buddy. Ask me anything about crops, soil, weather, or schemes — I'm here to help, dost!",
-  hi: "नमस्ते दोस्त! 🙏 मैं पाटील हूं, तुम्हारा खेती का साथी। फसल, मिट्टी, मौसम या सरकारी योजनाओं के बारे में कुछ भी पूछो — मैं यहां मदद के लिए हूं!",
-  mr: "नमस्कार मित्रा! 🙏 मी पाटील आहे, तुमचा शेतीचा सोबती. पीक, माती, हवामान किंवा सरकारी योजनांबद्दल काहीही विचारा — मी मदतीसाठी आहे!"
+  en: "Hello! 🌱 I'm your AI farming assistant. Ask me anything about crops, soil, weather, or schemes — I'm here to help!",
+  hi: "नमस्ते! 🌱 मैं आपका AI कृषि सहायक हूं। फसल, मिट्टी, मौसम या सरकारी योजनाओं के बारे में कुछ भी पूछें!",
+  mr: "नमस्कार! 🌱 मी तुमचा AI शेती सहाय्यक आहे. पीक, माती, हवामान किंवा सरकारी योजनांबद्दल काहीही विचारा!"
 };
 
 const placeholders = {
-  en: "Ask Patil anything...",
-  hi: "पाटिल से कुछ भी पूछें...",
-  mr: "पाटीलला काहीही विचारा..."
+  en: "Ask AI Assist anything...",
+  hi: "AI सहायक से कुछ भी पूछें...",
+  mr: "AI सहाय्यकाला काहीही विचारा..."
 };
 
 type Size = 'small' | 'medium' | 'large';
-
 const sizeConfig = {
-  small: { width: 350, height: 450 },
-  medium: { width: 400, height: 550 },
-  large: { width: 500, height: 650 },
+  small: { width: 380, height: 500 },
+  medium: { width: 440, height: 600 },
+  large: { width: 520, height: 700 },
 };
 
 export function Chatbot() {
@@ -62,7 +60,6 @@ export function Chatbot() {
   const chatRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize position
   useEffect(() => {
     if (position.x === -1) {
       setPosition({
@@ -85,7 +82,6 @@ export function Chatbot() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Dragging logic
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!chatRef.current) return;
     const rect = chatRef.current.getBoundingClientRect();
@@ -106,7 +102,6 @@ export function Chatbot() {
     return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
   }, [isDragging, chatSize]);
 
-  // Touch dragging
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (!chatRef.current) return;
     const rect = chatRef.current.getBoundingClientRect();
@@ -134,7 +129,6 @@ export function Chatbot() {
     const idx = sizes.indexOf(chatSize);
     const next = sizes[(idx + 1) % sizes.length];
     setChatSize(next);
-    // Adjust position to stay in bounds
     setPosition(prev => ({
       x: Math.min(prev.x, window.innerWidth - sizeConfig[next].width),
       y: Math.min(prev.y, window.innerHeight - sizeConfig[next].height),
@@ -207,7 +201,7 @@ export function Chatbot() {
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full hero-gradient shadow-lg transition-all duration-300 hover:scale-110 ${isOpen ? 'scale-0' : 'scale-100'}`}
       >
-        <MessageCircle className="h-6 w-6 text-primary-foreground" />
+        <Sparkles className="h-6 w-6 text-primary-foreground" />
       </button>
 
       <div
@@ -224,7 +218,7 @@ export function Chatbot() {
         }}
         className={`flex flex-col rounded-2xl bg-card shadow-2xl border border-border transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}`}
       >
-        {/* Header - draggable */}
+        {/* Header */}
         <div
           className="flex items-center justify-between p-3 border-b border-border hero-gradient rounded-t-2xl cursor-move select-none"
           onMouseDown={handleMouseDown}
@@ -233,12 +227,12 @@ export function Chatbot() {
           <div className="flex items-center gap-2">
             <GripVertical className="h-4 w-4 text-primary-foreground/50" />
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-foreground/20">
-              <Bot className="h-4 w-4 text-primary-foreground" />
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-primary-foreground">Patil 🌾</h3>
+              <h3 className="font-semibold text-sm text-primary-foreground">AI Assist 🌾</h3>
               <p className="text-[10px] text-primary-foreground/70">
-                {lang === 'hi' ? 'AI कृषि सहायक' : lang === 'mr' ? 'AI शेती सहाय्यक' : 'AI Farm Assistant'}
+                {lang === 'hi' ? 'AI कृषि सहायक' : lang === 'mr' ? 'AI शेती सहाय्यक' : 'Smart Farm Assistant'}
               </p>
             </div>
           </div>
@@ -257,11 +251,17 @@ export function Chatbot() {
           {messages.map((message) => (
             <div key={message.id} className={`flex gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
               <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${message.role === 'user' ? 'bg-primary' : 'bg-secondary'}`}>
-                {message.role === 'user' ? <User className="h-3.5 w-3.5 text-primary-foreground" /> : <Bot className="h-3.5 w-3.5 text-secondary-foreground" />}
+                {message.role === 'user' ? <User className="h-3.5 w-3.5 text-primary-foreground" /> : <Sparkles className="h-3.5 w-3.5 text-secondary-foreground" />}
               </div>
               <div className="max-w-[80%]">
                 <div className={`rounded-2xl px-3 py-2 ${message.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted rounded-tl-none'}`}>
-                  <p className="text-sm whitespace-pre-line">{message.content}</p>
+                  {message.role === 'bot' ? (
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_strong]:font-semibold">
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-line">{message.content}</p>
+                  )}
                 </div>
                 {message.role === 'bot' && (
                   <button onClick={() => speakMessage(message)} className="mt-0.5 p-1 rounded-full hover:bg-muted transition-colors" title="Listen">
@@ -276,7 +276,7 @@ export function Chatbot() {
           ))}
           {isTyping && (
             <div className="flex gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary"><Bot className="h-3.5 w-3.5 text-secondary-foreground" /></div>
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary"><Sparkles className="h-3.5 w-3.5 text-secondary-foreground" /></div>
               <div className="bg-muted rounded-2xl rounded-tl-none px-3 py-2">
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />

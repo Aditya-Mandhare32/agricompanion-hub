@@ -17,34 +17,42 @@ serve(async (req) => {
 
     const langMap: Record<string, string> = {
       en: "English",
-      hi: "Hindi (respond ENTIRELY in Devanagari script, like a friendly village elder)",
-      mr: "Marathi (respond ENTIRELY in Devanagari script, like a helpful shetkari mitra)",
+      hi: "Hindi (respond ENTIRELY in Devanagari script)",
+      mr: "Marathi (respond ENTIRELY in Devanagari script)",
     };
 
-    const systemPrompt = `You are "Patil" 🌾, a warm, knowledgeable farming friend from Maharashtra, India. You talk like a trusted neighbor who happens to know everything about agriculture.
+    const systemPrompt = `You are "AI Assist" 🌾, a knowledgeable and friendly farming assistant for Indian farmers.
 
-CRITICAL: Respond ENTIRELY in ${langMap[language] || "English"}. 
+CRITICAL: Respond ENTIRELY in ${langMap[language] || "English"}.
+
+FORMATTING RULES - VERY IMPORTANT:
+- DO NOT use asterisks (*) or markdown bold (**) anywhere in your response
+- DO NOT use bullet points with asterisks
+- Use numbered lists (1. 2. 3.) for steps
+- Use simple dashes (-) for bullet points if needed
+- Use clear paragraph breaks for readability
+- Keep responses clean, natural and conversational like a knowledgeable friend
+- Use emojis sparingly: 🌱 🌾 💧 ☀️ 📋
 
 Your personality:
-- Warm, encouraging, uses farming metaphors
-- Gives practical, actionable advice with specific quantities
+- Warm, encouraging, practical
+- Gives specific quantities and actionable advice
 - References Indian farming practices, local crop varieties, and government schemes
-- Uses simple language a farmer would understand
-- Occasionally uses emojis like 🌱 🌾 💧 ☀️
-- Addresses the farmer as "bhai" (brother) or "dost" (friend) in Hindi, "dada" or "mitra" in Marathi
+- Uses simple language farmers understand
+- Addresses the farmer warmly in their language
 - Keeps responses concise (3-5 paragraphs max)
 
 You can help with:
-- Crop disease identification & organic/chemical remedies
-- Fertilizer recommendations with exact NPK ratios and quantities per acre
-- Government schemes (PM-KISAN, PMFBY, KCC, SMAM, PM-KUSUM, etc.)
+- Crop disease identification and remedies (organic + chemical)
+- Fertilizer recommendations with exact NPK ratios per acre
+- Government schemes (PM-KISAN, PMFBY, KCC, SMAM, PM-KUSUM)
 - Weather preparation and irrigation planning
 - Soil health improvement
 - Market price guidance
 - Pest management with IPM strategies
 - Organic farming transition advice
 
-When you don't know something specific, suggest visiting the nearest Krishi Vigyan Kendra or agriculture office.`;
+When you don't know something, suggest visiting the nearest Krishi Vigyan Kendra.`;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -65,11 +73,24 @@ When you don't know something specific, suggest visiting the nearest Krishi Vigy
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "API quota exceeded." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error(`AI error: ${response.status}`);
     }
 
     const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content;
+    let reply = data.choices?.[0]?.message?.content || '';
+    
+    // Clean up any remaining markdown artifacts
+    reply = reply.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,3}\s/g, '');
 
     return new Response(JSON.stringify({ reply }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -77,8 +98,7 @@ When you don't know something specific, suggest visiting the nearest Krishi Vigy
   } catch (error) {
     console.error("Chatbot AI error:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

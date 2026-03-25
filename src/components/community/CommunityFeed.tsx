@@ -13,7 +13,7 @@ import {
   Heart, MessageCircle, Bookmark, Share2, MoreHorizontal,
   Image as ImageIcon, Send, Loader2, Trash2, Users,
   HelpCircle, Filter, Search, X, ChevronDown, ChevronUp, MapPin,
-  Plus, Video, UserCircle
+  Plus, Video, UserCircle, Download
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -380,6 +380,21 @@ export function CommunityFeed({ onNavigateToMessages }: CommunityFeedProps) {
                       <DropdownMenuItem onClick={() => startMessage(post.user_id)}><MessageCircle className="h-4 w-4 mr-2" />Message</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate(`/profile?user=${post.user_id}`)}><UserCircle className="h-4 w-4 mr-2" />Profile</DropdownMenuItem>
                     </>
+                  )}
+                  {post.image_url && (
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        const resp = await fetch(post.image_url!);
+                        const blob = await resp.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `agri360-post-${post.id}.${post.image_url!.split('.').pop()?.split('?')[0] || 'jpg'}`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast.success('Download started!');
+                      } catch { toast.error('Download failed'); }
+                    }}><Download className="h-4 w-4 mr-2" />Download</DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -50,6 +50,22 @@ export function useDeleteCrop() {
 
   return useMutation({
     mutationFn: async (cropId: string) => {
+      // Get crop name first to delete associated events
+      const { data: cropData } = await supabase
+        .from('crop_history')
+        .select('crop_name')
+        .eq('id', cropId)
+        .single();
+      
+      // Delete associated calendar events
+      if (cropData?.crop_name) {
+        await supabase
+          .from('calendar_events')
+          .delete()
+          .eq('user_id', user!.id)
+          .eq('crop_name', cropData.crop_name);
+      }
+      
       // Delete crop history entry
       const { error: histError } = await supabase
         .from('crop_history')

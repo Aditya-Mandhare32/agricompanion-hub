@@ -78,9 +78,6 @@ export function Header() {
 
           {user ? (
             <>
-              <Button variant="ghost" size="icon" asChild className="hidden sm:flex">
-                <Link to="/messages"><MessageCircle className="h-5 w-5" /></Link>
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">

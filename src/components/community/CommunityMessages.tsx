@@ -175,12 +175,21 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
 
   const uploadMedia = async (file: File): Promise<string | null> => {
     if (!user) return null;
-    const fileExt = file.name.split('.').pop() || 'bin';
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-    const { error } = await supabase.storage.from('community-images').upload(fileName, file);
-    if (error) { console.error('Upload error:', error); return null; }
-    const { data } = supabase.storage.from('community-images').getPublicUrl(fileName);
-    return data.publicUrl;
+    try {
+      const fileExt = file.name.split('.').pop() || 'bin';
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const { error } = await supabase.storage.from('community-images').upload(fileName, file, {
+        cacheControl: '3600',
+        contentType: file.type,
+        upsert: false,
+      });
+      if (error) { console.error('Upload error:', error); toast.error(`Upload failed: ${error.message}`); return null; }
+      const { data } = supabase.storage.from('community-images').getPublicUrl(fileName);
+      return data.publicUrl;
+    } catch (err) {
+      console.error('Upload exception:', err);
+      return null;
+    }
   };
 
   const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -164,34 +164,48 @@ export default function CalendarPage() {
     const upcoming = dbEvents
       .filter(e => new Date(e.event_date) >= now && !e.completed)
       .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
-      .slice(0, 5);
+      .slice(0, 8);
 
     const tips: { cropName: string; activity: string; tip: string; date: string }[] = [];
     for (const event of upcoming) {
       const data = cropActivitiesData[event.crop_name];
       if (data) {
-        const tipText = getTipForActivity(data, language);
+        // Find activity-specific tip from the dataset
+        const actType = event.event_type.toLowerCase();
+        const matchingActivity = data.activities.find(a => 
+          a.en.toLowerCase().includes(actType) || actType.includes(a.en.toLowerCase().split(' ')[0])
+        );
+        
+        let tipText = '';
+        if (matchingActivity && matchingActivity.notes) {
+          tipText = matchingActivity.notes;
+        } else {
+          // Fallback: get general tip and extract relevant sentence
+          const fullTip = getTipForActivity(data, language);
+          const sentences = fullTip.split(/[.|;]/).filter(s => s.trim().length > 10);
+          // Try to find sentence matching activity type
+          const relevantSentence = sentences.find(s => s.toLowerCase().includes(actType));
+          tipText = relevantSentence?.trim() || sentences[Math.min(tips.length, sentences.length - 1)]?.trim() || fullTip.slice(0, 150);
+        }
+        
         if (tipText) {
-          // Split tips by period and take unique ones
-          const sentences = tipText.split(/[.|]/).filter(s => s.trim().length > 10);
-          const shortTip = sentences[0]?.trim() || tipText.slice(0, 120);
           tips.push({
             cropName: event.crop_name,
             activity: event.event_type,
-            tip: shortTip,
+            tip: tipText.slice(0, 200),
             date: event.event_date,
           });
         }
       }
     }
-    // Deduplicate by crop
+    // Keep unique crop+activity combos
     const seen = new Set<string>();
     return tips.filter(t => {
       const key = `${t.cropName}-${t.activity}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).slice(0, 4);
+    }).slice(0, 5);
   }, [dbEvents, cropActivitiesData, language]);
 
   const handleAddEvent = async () => {

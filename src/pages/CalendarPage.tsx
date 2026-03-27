@@ -378,7 +378,45 @@ export default function CalendarPage() {
           <Button variant="outline" onClick={handleExportCalendar}><Download className="h-4 w-4 mr-2" />{language === 'hi' ? 'निर्यात' : language === 'mr' ? 'निर्यात' : 'Export'}</Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Multi-Crop Management */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              {language === 'hi' ? 'बहु-फसल प्रबंधन' : language === 'mr' ? 'बहु-पीक व्यवस्थापन' : 'Multi-Crop Management'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(!activeCrops || activeCrops.length === 0) && cropCycles.length === 0 ? (
+              <div className="text-center py-8">
+                <Leaf className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground mb-1">{language === 'hi' ? 'अभी कोई फसल चक्र नहीं' : language === 'mr' ? 'अद्याप कोणतेही पीक चक्र नाही' : 'No crop cycles added yet'}</p>
+                <p className="text-xs text-muted-foreground mb-4">{language === 'hi' ? 'एक साथ कई फसलें प्रबंधित करने के लिए फसल चक्र जोड़ें' : language === 'mr' ? 'एकाच वेळी अनेक पिके व्यवस्थापित करण्यासाठी पीक चक्र जोडा' : 'Add crop cycles to manage multiple crops simultaneously'}</p>
+                <div className="flex gap-3 justify-center">
+                  <Button variant="outline" onClick={() => setIsAddCycleDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />{language === 'hi' ? 'फसल चक्र जोड़ें' : language === 'mr' ? 'पीक चक्र जोडा' : 'Add Crop Cycle'}</Button>
+                  <Button variant="outline" onClick={() => setIsAddOtherOpen(true)}><Sprout className="h-4 w-4 mr-2" />{language === 'hi' ? 'अन्य जोड़ें' : language === 'mr' ? 'इतर जोडा' : 'Add Other'}</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeCrops?.map((crop) => (
+                  <div key={crop.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div>
+                      <h4 className="font-semibold">{crop.crop_name}</h4>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        {crop.crop_category && <Badge variant="outline" className="text-xs">{crop.crop_category}</Badge>}
+                      </div>
+                    </div>
+                    <Button variant="destructive" size="sm" onClick={() => setDeletingCropId(crop.id)}>
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />{language === 'hi' ? 'हटाएं' : language === 'mr' ? 'काढा' : 'Remove'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
           {/* Main Calendar */}
           <div className="lg:col-span-2 space-y-6">
             {viewMode === 'month' ? (

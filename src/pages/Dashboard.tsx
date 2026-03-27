@@ -71,7 +71,9 @@ const CropCard = React.memo(({ crop, language }: { crop: any; language: string }
         <CardContent className="p-5">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <h3 className="font-bold text-lg text-foreground">{crop.crop_name}</h3>
+            <h3 className="font-bold text-lg text-foreground">
+              {language === 'hi' && crop.crop_name_hi ? crop.crop_name_hi : language === 'mr' && crop.crop_name_mr ? crop.crop_name_mr : crop.crop_name}
+            </h3>
               {crop.field_name && <p className="text-xs text-muted-foreground">{crop.field_name}</p>}
             </div>
             <div className="flex items-center gap-1">
@@ -288,10 +290,14 @@ export default function Dashboard() {
         <motion.section variants={fadeIn} className="rounded-2xl overflow-hidden relative min-h-[280px]">
           {/* Dynamic background image based on weather */}
           <div className="absolute inset-0">
-            <img 
+           <img 
               src={weatherBgImage} 
               alt="Weather" 
+              crossOrigin="anonymous"
               className="w-full h-full object-cover transition-all duration-1000"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80';
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
           </div>

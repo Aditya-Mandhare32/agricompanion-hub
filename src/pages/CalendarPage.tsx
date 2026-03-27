@@ -31,6 +31,7 @@ import { TimelineView } from '@/components/calendar/TimelineView';
 import { CropCycleEditDialog } from '@/components/calendar/CropCycleEditDialog';
 import { ShopSection } from '@/components/calendar/ShopSection';
 import { AddOtherCropDialog } from '@/components/calendar/AddOtherCropDialog';
+import { CropHealthPopup } from '@/components/calendar/CropHealthPopup';
 import { useCalendarEvents, useActiveCrops, useDeleteCrop, useAllCropsFromDB } from '@/hooks/useCrops';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -99,6 +100,7 @@ export default function CalendarPage() {
   const [isAddOtherOpen, setIsAddOtherOpen] = useState(false);
   const [deletingCropId, setDeletingCropId] = useState<string | null>(null);
   const [cropActivitiesData, setCropActivitiesData] = useState<Record<string, CropActivityData>>({});
+  const [healthPopup, setHealthPopup] = useState<{ open: boolean; cropName: string; activity: string }>({ open: false, cropName: '', activity: '' });
   
   const [newEvent, setNewEvent] = useState({
     cropName: '', eventType: 'Sowing', date: new Date(), notes: '',
@@ -227,11 +229,33 @@ export default function CalendarPage() {
 
   const handleToggleComplete = async (event: CropEvent) => {
     try {
-      const { error } = await supabase.from('calendar_events').update({ completed: !event.completed }).eq('id', event.id);
+      const newCompleted = !event.completed;
+      const { error } = await supabase.from('calendar_events').update({ completed: newCompleted }).eq('id', event.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
+      // Show health popup when completing a task
+      if (newCompleted) {
+        setHealthPopup({ open: true, cropName: event.cropName, activity: event.eventType });
+      }
     } catch (err) {
       console.error('Toggle complete error:', err);
+    }
+  };
+
+  const handleHealthSubmit = (response: { condition: string; notes: string }) => {
+    toast.success(
+      language === 'hi' ? `${healthPopup.cropName} की स्थिति दर्ज की गई: ${response.condition}` :
+      language === 'mr' ? `${healthPopup.cropName} ची स्थिती नोंदवली: ${response.condition}` :
+      `${healthPopup.cropName} health recorded: ${response.condition}`
+    );
+    // Update tips based on condition
+    if (response.condition === 'poor') {
+      toast.info(
+        language === 'hi' ? 'AI सहायक से मदद लें या मिट्टी रिपोर्ट देखें' :
+        language === 'mr' ? 'AI सहाय्यकाकडून मदत घ्या किंवा माती अहवाल पहा' :
+        'Consider consulting AI assistant or checking soil report',
+        { duration: 5000 }
+      );
     }
   };
 

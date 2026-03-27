@@ -173,12 +173,25 @@ export function CommunityFeed({ onNavigateToMessages }: CommunityFeedProps) {
 
   const uploadMedia = async (file: File): Promise<string | null> => {
     if (!user) return null;
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-    const { error: uploadError } = await supabase.storage.from('community-images').upload(fileName, file);
-    if (uploadError) { console.error('Upload error:', uploadError); return null; }
-    const { data } = supabase.storage.from('community-images').getPublicUrl(fileName);
-    return data.publicUrl;
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('community-images').upload(fileName, file, {
+        cacheControl: '3600',
+        contentType: file.type,
+        upsert: false,
+      });
+      if (uploadError) { 
+        console.error('Upload error:', uploadError); 
+        toast.error(`Upload failed: ${uploadError.message}`);
+        return null; 
+      }
+      const { data } = supabase.storage.from('community-images').getPublicUrl(fileName);
+      return data.publicUrl;
+    } catch (err) {
+      console.error('Upload exception:', err);
+      return null;
+    }
   };
 
   const createPost = async () => {

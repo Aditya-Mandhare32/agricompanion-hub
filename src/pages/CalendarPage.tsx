@@ -570,6 +570,14 @@ export default function CalendarPage() {
       <CropCycleEditDialog cycle={editingCycle} isOpen={!!editingCycle} onClose={() => setEditingCycle(null)} onSave={(c) => setCropCycles(prev => prev.map(x => x.id === c.id ? c : x))} onDelete={(id) => setCropCycles(prev => prev.filter(c => c.id !== id))} regions={regions} />
       <ShopSection isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} />
       <AddOtherCropDialog isOpen={isAddOtherOpen} onClose={() => setIsAddOtherOpen(false)} language={language} />
+      <CropHealthPopup 
+        isOpen={healthPopup.open} 
+        onClose={() => setHealthPopup({ open: false, cropName: '', activity: '' })} 
+        cropName={healthPopup.cropName} 
+        activityName={healthPopup.activity} 
+        language={language} 
+        onSubmit={handleHealthSubmit} 
+      />
 
       {/* Delete Crop Confirmation */}
       <AlertDialog open={!!deletingCropId} onOpenChange={() => setDeletingCropId(null)}>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,6 +43,7 @@ const categoryColors: Record<string, string> = {
 
 export default function News() {
   const { language } = useApp();
+  const navigate = useNavigate();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,10 @@ export default function News() {
         body: { language, category: 'all' },
       });
       if (fnError) throw fnError;
-      setNews(data?.news || []);
+      const newsItems = data?.news || [];
+      setNews(newsItems);
+      // Store all news for saved page
+      localStorage.setItem('agri360_all_news', JSON.stringify(newsItems));
     } catch (err) {
       console.error('News fetch error:', err);
       setError(language === 'hi' ? 'समाचार लोड करने में त्रुटि' : language === 'mr' ? 'बातम्या लोड करण्यात त्रुटी' : 'Failed to load news. Please try again.');
@@ -119,10 +124,16 @@ export default function News() {
               {language === 'hi' ? 'नवीनतम कृषि अपडेट' : language === 'mr' ? 'नवीनतम कृषी अपडेट्स' : 'Latest agriculture updates'}
             </p>
           </div>
-          <Button variant="outline" onClick={refreshNews} disabled={refreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            {language === 'hi' ? 'रिफ्रेश' : language === 'mr' ? 'रिफ्रेश' : 'Refresh'}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/saved-news')}>
+              <BookmarkCheck className="h-4 w-4 mr-2" />
+              {language === 'hi' ? 'सहेजे' : language === 'mr' ? 'जतन' : 'Saved'}
+            </Button>
+            <Button variant="outline" onClick={refreshNews} disabled={refreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {language === 'hi' ? 'रिफ्रेश' : language === 'mr' ? 'रिफ्रेश' : 'Refresh'}
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">

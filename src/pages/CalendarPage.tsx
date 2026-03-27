@@ -31,6 +31,7 @@ import { TimelineView } from '@/components/calendar/TimelineView';
 import { CropCycleEditDialog } from '@/components/calendar/CropCycleEditDialog';
 import { ShopSection } from '@/components/calendar/ShopSection';
 import { AddOtherCropDialog } from '@/components/calendar/AddOtherCropDialog';
+import { CropHealthPopup } from '@/components/calendar/CropHealthPopup';
 import { useCalendarEvents, useActiveCrops, useDeleteCrop, useAllCropsFromDB } from '@/hooks/useCrops';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -99,6 +100,7 @@ export default function CalendarPage() {
   const [isAddOtherOpen, setIsAddOtherOpen] = useState(false);
   const [deletingCropId, setDeletingCropId] = useState<string | null>(null);
   const [cropActivitiesData, setCropActivitiesData] = useState<Record<string, CropActivityData>>({});
+  const [healthPopup, setHealthPopup] = useState<{ open: boolean; cropName: string; activity: string }>({ open: false, cropName: '', activity: '' });
   
   const [newEvent, setNewEvent] = useState({
     cropName: '', eventType: 'Sowing', date: new Date(), notes: '',
@@ -162,34 +164,48 @@ export default function CalendarPage() {
     const upcoming = dbEvents
       .filter(e => new Date(e.event_date) >= now && !e.completed)
       .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
-      .slice(0, 5);
+      .slice(0, 8);
 
     const tips: { cropName: string; activity: string; tip: string; date: string }[] = [];
     for (const event of upcoming) {
       const data = cropActivitiesData[event.crop_name];
       if (data) {
-        const tipText = getTipForActivity(data, language);
+        // Find activity-specific tip from the dataset
+        const actType = event.event_type.toLowerCase();
+        const matchingActivity = data.activities.find(a => 
+          a.en.toLowerCase().includes(actType) || actType.includes(a.en.toLowerCase().split(' ')[0])
+        );
+        
+        let tipText = '';
+        if (matchingActivity && matchingActivity.notes) {
+          tipText = matchingActivity.notes;
+        } else {
+          // Fallback: get general tip and extract relevant sentence
+          const fullTip = getTipForActivity(data, language);
+          const sentences = fullTip.split(/[.|;]/).filter(s => s.trim().length > 10);
+          // Try to find sentence matching activity type
+          const relevantSentence = sentences.find(s => s.toLowerCase().includes(actType));
+          tipText = relevantSentence?.trim() || sentences[Math.min(tips.length, sentences.length - 1)]?.trim() || fullTip.slice(0, 150);
+        }
+        
         if (tipText) {
-          // Split tips by period and take unique ones
-          const sentences = tipText.split(/[.|]/).filter(s => s.trim().length > 10);
-          const shortTip = sentences[0]?.trim() || tipText.slice(0, 120);
           tips.push({
             cropName: event.crop_name,
             activity: event.event_type,
-            tip: shortTip,
+            tip: tipText.slice(0, 200),
             date: event.event_date,
           });
         }
       }
     }
-    // Deduplicate by crop
+    // Keep unique crop+activity combos
     const seen = new Set<string>();
     return tips.filter(t => {
       const key = `${t.cropName}-${t.activity}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).slice(0, 4);
+    }).slice(0, 5);
   }, [dbEvents, cropActivitiesData, language]);
 
   const handleAddEvent = async () => {
@@ -227,11 +243,33 @@ export default function CalendarPage() {
 
   const handleToggleComplete = async (event: CropEvent) => {
     try {
-      const { error } = await supabase.from('calendar_events').update({ completed: !event.completed }).eq('id', event.id);
+      const newCompleted = !event.completed;
+      const { error } = await supabase.from('calendar_events').update({ completed: newCompleted }).eq('id', event.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
+      // Show health popup when completing a task
+      if (newCompleted) {
+        setHealthPopup({ open: true, cropName: event.cropName, activity: event.eventType });
+      }
     } catch (err) {
       console.error('Toggle complete error:', err);
+    }
+  };
+
+  const handleHealthSubmit = (response: { condition: string; notes: string }) => {
+    toast.success(
+      language === 'hi' ? `${healthPopup.cropName} की स्थिति दर्ज की गई: ${response.condition}` :
+      language === 'mr' ? `${healthPopup.cropName} ची स्थिती नोंदवली: ${response.condition}` :
+      `${healthPopup.cropName} health recorded: ${response.condition}`
+    );
+    // Update tips based on condition
+    if (response.condition === 'poor') {
+      toast.info(
+        language === 'hi' ? 'AI सहायक से मदद लें या मिट्टी रिपोर्ट देखें' :
+        language === 'mr' ? 'AI सहाय्यकाकडून मदत घ्या किंवा माती अहवाल पहा' :
+        'Consider consulting AI assistant or checking soil report',
+        { duration: 5000 }
+      );
     }
   };
 
@@ -353,6 +391,45 @@ export default function CalendarPage() {
           </div>
           <Button variant="outline" onClick={handleExportCalendar}><Download className="h-4 w-4 mr-2" />{language === 'hi' ? 'निर्यात' : language === 'mr' ? 'निर्यात' : 'Export'}</Button>
         </div>
+
+        {/* Multi-Crop Management */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              {language === 'hi' ? 'बहु-फसल प्रबंधन' : language === 'mr' ? 'बहु-पीक व्यवस्थापन' : 'Multi-Crop Management'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(!activeCrops || activeCrops.length === 0) && cropCycles.length === 0 ? (
+              <div className="text-center py-8">
+                <Leaf className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground mb-1">{language === 'hi' ? 'अभी कोई फसल चक्र नहीं' : language === 'mr' ? 'अद्याप कोणतेही पीक चक्र नाही' : 'No crop cycles added yet'}</p>
+                <p className="text-xs text-muted-foreground mb-4">{language === 'hi' ? 'एक साथ कई फसलें प्रबंधित करने के लिए फसल चक्र जोड़ें' : language === 'mr' ? 'एकाच वेळी अनेक पिके व्यवस्थापित करण्यासाठी पीक चक्र जोडा' : 'Add crop cycles to manage multiple crops simultaneously'}</p>
+                <div className="flex gap-3 justify-center">
+                  <Button variant="outline" onClick={() => setIsAddCycleDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />{language === 'hi' ? 'फसल चक्र जोड़ें' : language === 'mr' ? 'पीक चक्र जोडा' : 'Add Crop Cycle'}</Button>
+                  <Button variant="outline" onClick={() => setIsAddOtherOpen(true)}><Sprout className="h-4 w-4 mr-2" />{language === 'hi' ? 'अन्य जोड़ें' : language === 'mr' ? 'इतर जोडा' : 'Add Other'}</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeCrops?.map((crop) => (
+                  <div key={crop.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div>
+                      <h4 className="font-semibold">{crop.crop_name}</h4>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        {crop.crop_category && <Badge variant="outline" className="text-xs">{crop.crop_category}</Badge>}
+                      </div>
+                    </div>
+                    <Button variant="destructive" size="sm" onClick={() => setDeletingCropId(crop.id)}>
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />{language === 'hi' ? 'हटाएं' : language === 'mr' ? 'काढा' : 'Remove'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Calendar */}
@@ -546,6 +623,14 @@ export default function CalendarPage() {
       <CropCycleEditDialog cycle={editingCycle} isOpen={!!editingCycle} onClose={() => setEditingCycle(null)} onSave={(c) => setCropCycles(prev => prev.map(x => x.id === c.id ? c : x))} onDelete={(id) => setCropCycles(prev => prev.filter(c => c.id !== id))} regions={regions} />
       <ShopSection isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} />
       <AddOtherCropDialog isOpen={isAddOtherOpen} onClose={() => setIsAddOtherOpen(false)} language={language} />
+      <CropHealthPopup 
+        isOpen={healthPopup.open} 
+        onClose={() => setHealthPopup({ open: false, cropName: '', activity: '' })} 
+        cropName={healthPopup.cropName} 
+        activityName={healthPopup.activity} 
+        language={language} 
+        onSubmit={handleHealthSubmit} 
+      />
 
       {/* Delete Crop Confirmation */}
       <AlertDialog open={!!deletingCropId} onOpenChange={() => setDeletingCropId(null)}>

@@ -175,12 +175,21 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
 
   const uploadMedia = async (file: File): Promise<string | null> => {
     if (!user) return null;
-    const fileExt = file.name.split('.').pop() || 'bin';
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-    const { error } = await supabase.storage.from('community-images').upload(fileName, file);
-    if (error) { console.error('Upload error:', error); return null; }
-    const { data } = supabase.storage.from('community-images').getPublicUrl(fileName);
-    return data.publicUrl;
+    try {
+      const fileExt = file.name.split('.').pop() || 'bin';
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const { error } = await supabase.storage.from('community-images').upload(fileName, file, {
+        cacheControl: '3600',
+        contentType: file.type,
+        upsert: false,
+      });
+      if (error) { console.error('Upload error:', error); toast.error(`Upload failed: ${error.message}`); return null; }
+      const { data } = supabase.storage.from('community-images').getPublicUrl(fileName);
+      return data.publicUrl;
+    } catch (err) {
+      console.error('Upload exception:', err);
+      return null;
+    }
   };
 
   const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -454,14 +463,31 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
             )}
 
             <div className="p-4 border-t">
+              {/* Media options popup */}
               <div className="flex gap-2 items-center">
                 <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleMediaSelect} className="hidden" />
-                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                </Button>
-                <Button variant="ghost" size="icon" className={cn("shrink-0", isRecording && "text-red-500 animate-pulse")} onClick={isRecording ? stopRecording : startRecording} disabled={uploading}>
-                  {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5 text-muted-foreground" />}
-                </Button>
+                <div className="relative">
+                  <Button variant="ghost" size="icon" className="shrink-0" onClick={() => {
+                    const el = document.getElementById('msg-media-popup');
+                    if (el) el.classList.toggle('hidden');
+                  }}>
+                    <Plus className="h-5 w-5 text-muted-foreground" />
+                  </Button>
+                  <div id="msg-media-popup" className="hidden absolute bottom-12 left-0 bg-popover border rounded-lg shadow-xl p-2 flex gap-1 z-50">
+                    <Button variant="ghost" size="sm" className="flex flex-col items-center gap-1 h-auto py-2 px-3" onClick={() => { fileInputRef.current!.accept = 'image/*'; fileInputRef.current?.click(); document.getElementById('msg-media-popup')?.classList.add('hidden'); }}>
+                      <ImageIcon className="h-5 w-5 text-primary" />
+                      <span className="text-[10px]">{language === 'hi' ? 'फोटो' : language === 'mr' ? 'फोटो' : 'Photo'}</span>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="flex flex-col items-center gap-1 h-auto py-2 px-3" onClick={() => { fileInputRef.current!.accept = 'video/*'; fileInputRef.current?.click(); document.getElementById('msg-media-popup')?.classList.add('hidden'); }}>
+                      <Video className="h-5 w-5 text-primary" />
+                      <span className="text-[10px]">{language === 'hi' ? 'वीडियो' : language === 'mr' ? 'व्हिडिओ' : 'Video'}</span>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="flex flex-col items-center gap-1 h-auto py-2 px-3" onClick={() => { document.getElementById('msg-media-popup')?.classList.add('hidden'); isRecording ? stopRecording() : startRecording(); }}>
+                      <Mic className="h-5 w-5 text-primary" />
+                      <span className="text-[10px]">{language === 'hi' ? 'ऑडियो' : language === 'mr' ? 'ऑडिओ' : 'Audio'}</span>
+                    </Button>
+                  </div>
+                </div>
                 <Input
                   placeholder={language === 'hi' ? 'संदेश लिखें...' : language === 'mr' ? 'संदेश लिहा...' : 'Type a message...'}
                   value={newMessage}
@@ -470,13 +496,14 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
                   className="flex-1"
                   disabled={isRecording || uploading}
                 />
-                <Button onClick={sendMessage} disabled={(!newMessage.trim() && !selectedMedia) || uploading || isRecording} className="shrink-0">
+                <Button onClick={sendMessage} disabled={(!newMessage.trim() && !selectedMedia) || uploading || isRecording} size="icon" className="shrink-0 rounded-full">
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
               {isRecording && (
                 <p className="text-xs text-red-500 mt-1 animate-pulse text-center">
-                  {language === 'hi' ? '🔴 रिकॉर्डिंग...' : language === 'mr' ? '🔴 रेकॉर्डिंग...' : '🔴 Recording...'}
+                  {language === 'hi' ? '🔴 रिकॉर्डिंग... रोकने के लिए दबाएं' : language === 'mr' ? '🔴 रेकॉर्डिंग... थांबवण्यासाठी दाबा' : '🔴 Recording... tap to stop'}
+                  <Button variant="ghost" size="sm" className="ml-2 text-red-500" onClick={stopRecording}>Stop</Button>
                 </p>
               )}
             </div>

@@ -238,24 +238,62 @@ export default function SoilReport() {
 
       if (error) throw error;
 
-      // Use browser's speech synthesis
-      const utterance = new SpeechSynthesisUtterance(data.spokenText);
-      
-      // Set language
-      if (language === 'hi') utterance.lang = 'hi-IN';
-      else if (language === 'mr') utterance.lang = 'mr-IN';
-      else utterance.lang = 'en-US';
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
 
-      utterance.rate = 0.9;
+      // Use browser's speech synthesis
+      const utterance = new SpeechSynthesisUtterance(data.spokenText || aiAnalysis.summary);
+      
+      // Set language and find the best matching voice
+      const langCode = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
+      utterance.lang = langCode;
+      
+      // Wait for voices to load and pick best match
+      const pickVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        const exactMatch = voices.find(v => v.lang === langCode);
+        const partialMatch = voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
+        const fallback = voices.find(v => v.lang.startsWith('en'));
+        if (exactMatch) utterance.voice = exactMatch;
+        else if (partialMatch) utterance.voice = partialMatch;
+        else if (fallback) utterance.voice = fallback;
+      };
+      
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        pickVoice();
+      } else {
+        // Voices may not be loaded yet
+        await new Promise<void>((resolve) => {
+          window.speechSynthesis.onvoiceschanged = () => { pickVoice(); resolve(); };
+          setTimeout(resolve, 1000);
+        });
+      }
+
+      utterance.rate = 0.85;
+      utterance.pitch = 1.0;
       utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
+      utterance.onerror = (e) => { console.error('Speech error:', e); setIsSpeaking(false); };
 
       setSpeechSynthesis(utterance);
       setIsSpeaking(true);
       window.speechSynthesis.speak(utterance);
     } catch (error) {
       console.error('TTS error:', error);
-      toast.error('Voice explanation failed');
+      // Fallback: try browser TTS directly without edge function
+      try {
+        const fallbackText = aiAnalysis.summary + '. ' + aiAnalysis.insights.join('. ');
+        const utterance = new SpeechSynthesisUtterance(fallbackText);
+        utterance.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
+        utterance.rate = 0.85;
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        setSpeechSynthesis(utterance);
+        setIsSpeaking(true);
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        toast.error(language === 'hi' ? 'ध्वनि उपलब्ध नहीं' : language === 'mr' ? 'आवाज उपलब्ध नाही' : 'Voice not available');
+      }
     }
   };
 

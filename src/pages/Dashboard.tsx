@@ -184,9 +184,18 @@ export default function Dashboard() {
   const { data: crops, isLoading: cropsLoading } = useQuery({
     queryKey: ['activeCrops', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('crop_history').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
+      const { data: cropHistory, error } = await supabase.from('crop_history').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
       if (error) throw error;
-      return data || [];
+      if (!cropHistory?.length) return [];
+      // Fetch translated names from crops table
+      const cropNames = [...new Set(cropHistory.map(c => c.crop_name))];
+      const { data: cropsData } = await supabase.from('crops').select('name, name_hi, name_mr').in('name', cropNames);
+      const nameMap = new Map(cropsData?.map(c => [c.name, c]) || []);
+      return cropHistory.map(c => ({
+        ...c,
+        crop_name_hi: nameMap.get(c.crop_name)?.name_hi || null,
+        crop_name_mr: nameMap.get(c.crop_name)?.name_mr || null,
+      }));
     },
     enabled: !!user?.id, staleTime: 300000, refetchInterval: 60000,
   });

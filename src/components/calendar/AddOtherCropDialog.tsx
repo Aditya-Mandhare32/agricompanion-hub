@@ -85,9 +85,9 @@ export function AddOtherCropDialog({ isOpen, onClose, language }: Props) {
         calendarInserts = offsets.map(({ activity, dayOffset }) => ({
           user_id: user.id,
           crop_name: selectedCrop.name,
-          event_type: getActivityName(activity, language),
+          event_type: activity.en,
           event_date: format(addDays(sDate, dayOffset), 'yyyy-MM-dd'),
-          notes: `${selectedCrop.name} - ${getActivityName(activity, language)} (${acres} acres)${activity.notes ? ' | ' + activity.notes : ''}${shortTip ? ' | 💡 ' + shortTip : ''}`,
+          notes: `${selectedCrop.name} - ${getActivityName(activity, language)} (${acres} acres)${activity.notes ? ' | ' + activity.notes : ''}`,
         }));
       } else {
         // Fallback generic activities

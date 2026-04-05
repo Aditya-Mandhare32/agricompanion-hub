@@ -515,32 +515,6 @@ export default function CalendarPage() {
               </Card>
             )}
 
-            {/* Active Crops */}
-            {activeCrops && activeCrops.length > 0 && (
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Sprout className="h-5 w-5 text-primary" />{language === 'hi' ? 'सक्रिय फसलें' : language === 'mr' ? 'सक्रिय पिके' : 'Active Crops'}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {activeCrops.map((crop) => (
-                      <div key={crop.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                        <div>
-                          <h4 className="font-semibold">{crop.crop_name}</h4>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                            {crop.crop_category && <Badge variant="outline" className="text-xs">{crop.crop_category}</Badge>}
-                            {crop.field_name && <span>{crop.field_name}</span>}
-                          </div>
-                        </div>
-                        <Button variant="destructive" size="sm" onClick={() => setDeletingCropId(crop.id)}>
-                          <Trash2 className="h-3.5 w-3.5 mr-1" />{language === 'hi' ? 'हटाएं' : language === 'mr' ? 'काढा' : 'Remove'}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {/* Sidebar */}

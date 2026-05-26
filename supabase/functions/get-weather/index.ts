@@ -41,13 +41,39 @@
      const coords = indianCities[cityKey] || indianCities['pune'];
      
      // Use Open-Meteo API (free, no API key required)
-     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&timezone=Asia/Kolkata&forecast_days=7`;
-     
-     const response = await fetch(weatherUrl);
-     
-     if (!response.ok) {
-       throw new Error(`Weather API error: ${response.status}`);
-     }
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&timezone=Asia/Kolkata&forecast_days=7`;
+
+    // Retry up to 3 times on transient upstream errors (502/503/504)
+    let response: Response | null = null;
+    let lastStatus = 0;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        response = await fetch(weatherUrl);
+        if (response.ok) break;
+        lastStatus = response.status;
+        if (![502, 503, 504, 429].includes(response.status)) break;
+      } catch (e) {
+        console.error(`Weather fetch attempt ${attempt + 1} failed:`, e);
+      }
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
+
+    if (!response || !response.ok) {
+      // Graceful fallback - return 200 with fallback flag so UI doesn't crash
+      console.error(`Weather API unavailable after retries, status: ${lastStatus}`);
+      const fallback = {
+        city: city.charAt(0).toUpperCase() + city.slice(1),
+        state: coords.state,
+        current: { temperature: 28, humidity: 60, precipitation: 0, windSpeed: 8, description: 'Unavailable', icon: 'cloud' },
+        forecast: [],
+        farmingTips: [],
+        totalWeeklyRainfall: 0,
+        fallback: true,
+      };
+      return new Response(JSON.stringify(fallback), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
      
      const data = await response.json();
      

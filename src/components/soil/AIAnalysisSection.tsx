@@ -93,6 +93,22 @@ const getSuitabilityColor = (suitability: string) => {
   return 'bg-red-500';
 };
 
+const enumLabel = (value: string, language: string): string => {
+  const map: Record<string, Record<string, string>> = {
+    hi: { High: 'उच्च', Medium: 'मध्यम', Low: 'कम', Optimal: 'उपयुक्त', Healthy: 'स्वस्थ', Good: 'अच्छी', 'Needs Attention': 'ध्यान दें', Poor: 'खराब' },
+    mr: { High: 'उच्च', Medium: 'मध्यम', Low: 'कमी', Optimal: 'योग्य', Healthy: 'निरोगी', Good: 'चांगली', 'Needs Attention': 'लक्ष द्या', Poor: 'खराब' },
+  };
+  return map[language]?.[value] || value;
+};
+
+const nutrientLabel = (key: string, language: string): string => {
+  const map: Record<string, Record<string, string>> = {
+    hi: { nitrogen: 'नाइट्रोजन', phosphorus: 'फॉस्फोरस', potassium: 'पोटैशियम' },
+    mr: { nitrogen: 'नायट्रोजन', phosphorus: 'फॉस्फरस', potassium: 'पोटॅशियम' },
+  };
+  return map[language]?.[key] || key;
+};
+
 export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps) {
   const titles = {
     en: {

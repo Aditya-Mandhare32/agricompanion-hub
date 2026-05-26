@@ -264,9 +264,9 @@ export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps
             {Object.entries(analysis.nutrientAnalysis).map(([nutrient, data]) => (
               <div key={nutrient} className={`p-4 rounded-lg border-2 ${getStatusColor(data.status)}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold capitalize">{nutrient}</span>
+                  <span className="font-semibold capitalize">{nutrientLabel(nutrient, language)}</span>
                   <Badge variant="outline" className={getStatusColor(data.status)}>
-                    {data.status}
+                    {enumLabel(data.status, language)}
                   </Badge>
                 </div>
                 <p className="text-sm opacity-80">{data.explanation}</p>

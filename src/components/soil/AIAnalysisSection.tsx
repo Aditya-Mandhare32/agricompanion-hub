@@ -93,6 +93,22 @@ const getSuitabilityColor = (suitability: string) => {
   return 'bg-red-500';
 };
 
+const enumLabel = (value: string, language: string): string => {
+  const map: Record<string, Record<string, string>> = {
+    hi: { High: 'उच्च', Medium: 'मध्यम', Low: 'कम', Optimal: 'उपयुक्त', Healthy: 'स्वस्थ', Good: 'अच्छी', 'Needs Attention': 'ध्यान दें', Poor: 'खराब' },
+    mr: { High: 'उच्च', Medium: 'मध्यम', Low: 'कमी', Optimal: 'योग्य', Healthy: 'निरोगी', Good: 'चांगली', 'Needs Attention': 'लक्ष द्या', Poor: 'खराब' },
+  };
+  return map[language]?.[value] || value;
+};
+
+const nutrientLabel = (key: string, language: string): string => {
+  const map: Record<string, Record<string, string>> = {
+    hi: { nitrogen: 'नाइट्रोजन', phosphorus: 'फॉस्फोरस', potassium: 'पोटैशियम' },
+    mr: { nitrogen: 'नायट्रोजन', phosphorus: 'फॉस्फरस', potassium: 'पोटॅशियम' },
+  };
+  return map[language]?.[key] || key;
+};
+
 export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps) {
   const titles = {
     en: {
@@ -248,9 +264,9 @@ export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps
             {Object.entries(analysis.nutrientAnalysis).map(([nutrient, data]) => (
               <div key={nutrient} className={`p-4 rounded-lg border-2 ${getStatusColor(data.status)}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold capitalize">{nutrient}</span>
+                  <span className="font-semibold capitalize">{nutrientLabel(nutrient, language)}</span>
                   <Badge variant="outline" className={getStatusColor(data.status)}>
-                    {data.status}
+                    {enumLabel(data.status, language)}
                   </Badge>
                 </div>
                 <p className="text-sm opacity-80">{data.explanation}</p>
@@ -305,7 +321,7 @@ export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${getSuitabilityColor(rec.suitability)}`} />
-                      {rec.suitability}
+                      {enumLabel(rec.suitability, language)}
                     </div>
                   </TableCell>
                   <TableCell>{rec.expectedYield}</TableCell>

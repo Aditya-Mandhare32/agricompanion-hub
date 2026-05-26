@@ -151,26 +151,57 @@ export function CommunityMessages({ targetUserId }: CommunityMessagesProps) {
 
   const startConversationWithUser = async (otherUserId: string) => {
     if (!user || otherUserId === user.id) return;
-    const { data: myConvs } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', user.id);
-    if (myConvs) {
-      for (const conv of myConvs) {
-        const { data: otherPart } = await supabase.from('conversation_participants').select('user_id').eq('conversation_id', conv.conversation_id).eq('user_id', otherUserId).maybeSingle();
-        if (otherPart) {
-          const { data: profile } = await supabase.from('profiles').select('user_id, username, avatar_url').eq('user_id', otherUserId).maybeSingle();
-          setSelectedConversation({ id: conv.conversation_id, updated_at: new Date().toISOString(), other_user: { id: otherUserId, username: profile?.username || 'Unknown', avatar_url: profile?.avatar_url || '' }, unread_count: 0 });
-          return;
+    try {
+      // Check for existing conversation between the two users
+      const { data: myConvs } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', user.id);
+      if (myConvs && myConvs.length > 0) {
+        for (const conv of myConvs) {
+          const { data: otherPart } = await supabase.from('conversation_participants').select('user_id').eq('conversation_id', conv.conversation_id).eq('user_id', otherUserId).maybeSingle();
+          if (otherPart) {
+            const { data: profile } = await supabase.from('profiles').select('user_id, username, avatar_url').eq('user_id', otherUserId).maybeSingle();
+            setSelectedConversation({ id: conv.conversation_id, updated_at: new Date().toISOString(), other_user: { id: otherUserId, username: profile?.username || 'Unknown', avatar_url: profile?.avatar_url || '' }, unread_count: 0 });
+            setShowSearch(false);
+            setSearchQuery('');
+            setSearchResults([]);
+            return;
+          }
         }
       }
+
+      // Create a new conversation. Generate id client-side so we don't hit RLS
+      // on SELECT before participant rows exist.
+      const newConvId = crypto.randomUUID();
+      const { error: convError } = await supabase.from('conversations').insert({ id: newConvId });
+      if (convError) {
+        console.error('Conversation create error:', convError);
+        toast.error('Could not start conversation');
+        return;
+      }
+      const { error: partError } = await supabase.from('conversation_participants').insert([
+        { conversation_id: newConvId, user_id: user.id },
+        { conversation_id: newConvId, user_id: otherUserId },
+      ]);
+      if (partError) {
+        console.error('Participants insert error:', partError);
+        toast.error('Could not add participants');
+        return;
+      }
+      const { data: profile } = await supabase.from('profiles').select('user_id, username, avatar_url').eq('user_id', otherUserId).maybeSingle();
+      const newConversation: Conversation = {
+        id: newConvId,
+        updated_at: new Date().toISOString(),
+        other_user: { id: otherUserId, username: profile?.username || 'Unknown', avatar_url: profile?.avatar_url || '' },
+        unread_count: 0,
+      };
+      setConversations(prev => [newConversation, ...prev]);
+      setSelectedConversation(newConversation);
+      setShowSearch(false);
+      setSearchQuery('');
+      setSearchResults([]);
+    } catch (err) {
+      console.error('startConversationWithUser failed:', err);
+      toast.error('Failed to open chat');
     }
-    const { data: newConv, error: convError } = await supabase.from('conversations').insert({}).select().single();
-    if (convError || !newConv) return;
-    await supabase.from('conversation_participants').insert([{ conversation_id: newConv.id, user_id: user.id }, { conversation_id: newConv.id, user_id: otherUserId }]);
-    const { data: profile } = await supabase.from('profiles').select('user_id, username, avatar_url').eq('user_id', otherUserId).maybeSingle();
-    const newConversation: Conversation = { id: newConv.id, updated_at: newConv.updated_at, other_user: { id: otherUserId, username: profile?.username || 'Unknown', avatar_url: profile?.avatar_url || '' }, unread_count: 0 };
-    setConversations(prev => [newConversation, ...prev]);
-    setSelectedConversation(newConversation);
-    setShowSearch(false);
-    setSearchQuery('');
   };
 
   const uploadMedia = async (file: File): Promise<string | null> => {

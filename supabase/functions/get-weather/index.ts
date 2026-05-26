@@ -43,19 +43,24 @@
      // Use Open-Meteo API (free, no API key required)
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&timezone=Asia/Kolkata&forecast_days=7`;
 
-    // Retry up to 3 times on transient upstream errors (502/503/504)
+    // Retry up to 2 times on transient upstream errors with 6s timeout per attempt
     let response: Response | null = null;
     let lastStatus = 0;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 6000);
       try {
-        response = await fetch(weatherUrl);
+        response = await fetch(weatherUrl, { signal: ctrl.signal });
+        clearTimeout(timer);
         if (response.ok) break;
         lastStatus = response.status;
         if (![502, 503, 504, 429].includes(response.status)) break;
       } catch (e) {
+        clearTimeout(timer);
         console.error(`Weather fetch attempt ${attempt + 1} failed:`, e);
+        response = null;
       }
-      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 500));
     }
 
     if (!response || !response.ok) {

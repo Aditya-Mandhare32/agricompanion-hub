@@ -321,7 +321,7 @@ export function AIAnalysisSection({ analysis, language }: AIAnalysisSectionProps
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${getSuitabilityColor(rec.suitability)}`} />
-                      {rec.suitability}
+                      {enumLabel(rec.suitability, language)}
                     </div>
                   </TableCell>
                   <TableCell>{rec.expectedYield}</TableCell>

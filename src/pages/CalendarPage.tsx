@@ -37,6 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { getCropActivities, getActivityName, getTipForActivity, type CropActivityData } from '@/lib/cropActivities';
+import { useBackfillCropEvents } from '@/hooks/useBackfillCropEvents';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -83,6 +84,8 @@ export default function CalendarPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  useBackfillCropEvents(language);
+
   
   const { data: dbEvents } = useCalendarEvents();
   const { data: activeCrops } = useActiveCrops();

@@ -369,7 +369,37 @@ export default function SoilReport() {
                 ? (language === 'hi' ? 'बंद करें' : language === 'mr' ? 'बंद करा' : 'Hide History')
                 : (language === 'hi' ? 'पिछले विश्लेषण देखें' : language === 'mr' ? 'मागील विश्लेषणे पहा' : 'View Previous Analyses')}
             </Button>
+            {/* TTS Voice Test Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-4 ml-2"
+              onClick={() => {
+                const samples: Record<string, string> = {
+                  en: 'Voice test. Recommended crops are Rice, Wheat, and Tomato. Apply 50 kilograms of urea per acre at flowering stage.',
+                  hi: 'आवाज परीक्षण। अनुशंसित फसलें हैं चावल, गेहूं और टमाटर। फूल आने के समय 50 किलो यूरिया प्रति एकड़ डालें।',
+                  mr: 'आवाज चाचणी. शिफारस केलेली पिके आहेत भात, गहू आणि टोमॅटो. फुलोरा अवस्थेत प्रति एकर 50 किलो युरिया द्या.',
+                };
+                const text = samples[language] || samples.en;
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
+                const voices = window.speechSynthesis.getVoices();
+                const match = voices.find(v => v.lang === u.lang) || voices.find(v => v.lang.startsWith(u.lang.split('-')[0]));
+                if (match) u.voice = match;
+                u.rate = 0.9;
+                window.speechSynthesis.speak(u);
+                toast.success(
+                  language === 'hi' ? `आवाज परीक्षण (${u.voice?.name || u.lang})` :
+                  language === 'mr' ? `आवाज चाचणी (${u.voice?.name || u.lang})` :
+                  `Voice test (${u.voice?.name || u.lang})`
+                );
+              }}
+            >
+              🔊 {language === 'hi' ? 'आवाज परीक्षण' : language === 'mr' ? 'आवाज चाचणी' : 'Test Voice'}
+            </Button>
           </div>
+
 
           {/* Saved Analyses Section */}
           {showSavedAnalyses && (

@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SmartNotifications } from '@/components/notifications/SmartNotifications';
 import { MarketPrices } from '@/components/dashboard/MarketPrices';
+import { useBackfillCropEvents } from '@/hooks/useBackfillCropEvents';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
 import {
@@ -180,6 +181,8 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   const { language } = useApp();
   const queryClient = useQueryClient();
+  useBackfillCropEvents(language);
+
 
   const { data: crops, isLoading: cropsLoading } = useQuery({
     queryKey: ['activeCrops', user?.id],

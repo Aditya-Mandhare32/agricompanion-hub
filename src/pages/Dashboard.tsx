@@ -181,6 +181,8 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   const { language } = useApp();
   const queryClient = useQueryClient();
+  useBackfillCropEvents(language);
+
 
   const { data: crops, isLoading: cropsLoading } = useQuery({
     queryKey: ['activeCrops', user?.id],

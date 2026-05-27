@@ -84,6 +84,8 @@ export default function CalendarPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  useBackfillCropEvents(language);
+
   
   const { data: dbEvents } = useCalendarEvents();
   const { data: activeCrops } = useActiveCrops();

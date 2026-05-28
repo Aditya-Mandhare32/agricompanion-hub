@@ -558,6 +558,9 @@ export default function Profile() {
                   </div>
                 </div>
 
+                <NotificationsSettingRow language={language} />
+
+
                 <div className="pt-4 border-t">
                   <Button variant="destructive" onClick={handleLogout}>
                     <LogOut className="h-4 w-4 mr-2" />

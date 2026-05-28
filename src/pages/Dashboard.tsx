@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SmartNotifications } from '@/components/notifications/SmartNotifications';
 import { MarketPrices } from '@/components/dashboard/MarketPrices';
 import { useBackfillCropEvents } from '@/hooks/useBackfillCropEvents';
+import { isPushSupported, getPermission, requestPushPermission } from '@/lib/pushNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
 import {

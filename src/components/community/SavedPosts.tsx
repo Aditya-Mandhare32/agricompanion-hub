@@ -155,7 +155,9 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
                 </div>
               </DialogHeader>
               {selectedPost.image_url && (
-                <AspectRatio ratio={1}><img src={selectedPost.image_url} alt="Post" className="w-full h-full object-cover rounded-lg" /></AspectRatio>
+                isVideoUrl(selectedPost.image_url)
+                  ? <video src={selectedPost.image_url} controls className="w-full rounded-lg" />
+                  : <AspectRatio ratio={1}><img src={selectedPost.image_url} alt="Post" className="w-full h-full object-cover rounded-lg" /></AspectRatio>
               )}
               <p className="text-sm whitespace-pre-wrap">{selectedPost.content}</p>
               <div className="flex items-center justify-between pt-2 border-t">

@@ -113,7 +113,16 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
           <div key={post.id} className="relative group cursor-pointer" onClick={() => setSelectedPost(post)}>
             <AspectRatio ratio={1}>
               {post.image_url ? (
-                <img src={post.image_url} alt="Post" className="w-full h-full object-cover rounded-sm" />
+                isVideoUrl(post.image_url) ? (
+                  <div className="relative w-full h-full">
+                    <video src={post.image_url} className="w-full h-full object-cover rounded-sm" muted playsInline preload="metadata" />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="bg-black/50 rounded-full p-2"><Play className="h-5 w-5 text-white fill-white" /></div>
+                    </div>
+                  </div>
+                ) : (
+                  <img src={post.image_url} alt="Post" className="w-full h-full object-cover rounded-sm" />
+                )
               ) : (
                 <div className="w-full h-full bg-muted flex items-center justify-center rounded-sm p-2">
                   <p className="text-xs text-muted-foreground line-clamp-4 text-center">{post.content}</p>

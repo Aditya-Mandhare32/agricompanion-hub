@@ -40,7 +40,6 @@ import {
   Bell,
 } from 'lucide-react';
 import { isPushSupported, getPermission, requestPushPermission } from '@/lib/pushNotifications';
-import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 

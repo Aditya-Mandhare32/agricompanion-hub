@@ -218,7 +218,9 @@ export function MyPosts() {
             <DialogTitle>{language === 'hi' ? 'पोस्ट' : language === 'mr' ? 'पोस्ट' : 'Post'}</DialogTitle>
           </DialogHeader>
           {editingPost?.image_url && (
-            <AspectRatio ratio={1}><img src={editingPost.image_url} alt="Post" className="w-full h-full object-cover rounded-lg" /></AspectRatio>
+            isVideoUrl(editingPost.image_url)
+              ? <video src={editingPost.image_url} controls className="w-full rounded-lg" />
+              : <AspectRatio ratio={1}><img src={editingPost.image_url} alt="Post" className="w-full h-full object-cover rounded-lg" /></AspectRatio>
           )}
           <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="min-h-[80px]" />
           <DialogFooter className="flex gap-2">

@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SmartNotifications } from '@/components/notifications/SmartNotifications';
 import { MarketPrices } from '@/components/dashboard/MarketPrices';
 import { useBackfillCropEvents } from '@/hooks/useBackfillCropEvents';
+import { isPushSupported, getPermission, requestPushPermission } from '@/lib/pushNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
 import {
@@ -267,6 +268,18 @@ export default function Dashboard() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, queryClient]);
+
+  // One-time push notification permission prompt
+  React.useEffect(() => {
+    if (!user?.id || !isPushSupported()) return;
+    const key = `push-prompt-${user.id}`;
+    if (localStorage.getItem(key)) return;
+    if (getPermission() !== 'default') { localStorage.setItem(key, '1'); return; }
+    const t = setTimeout(() => {
+      requestPushPermission().finally(() => localStorage.setItem(key, '1'));
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [user?.id]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();

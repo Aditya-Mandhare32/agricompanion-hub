@@ -269,6 +269,18 @@ export default function Dashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, queryClient]);
 
+  // One-time push notification permission prompt
+  React.useEffect(() => {
+    if (!user?.id || !isPushSupported()) return;
+    const key = `push-prompt-${user.id}`;
+    if (localStorage.getItem(key)) return;
+    if (getPermission() !== 'default') { localStorage.setItem(key, '1'); return; }
+    const t = setTimeout(() => {
+      requestPushPermission().finally(() => localStorage.setItem(key, '1'));
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [user?.id]);
+
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     const name = profile?.username || 'Farmer';

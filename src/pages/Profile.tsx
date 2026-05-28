@@ -575,3 +575,55 @@ export default function Profile() {
     </Layout>
   );
 }
+
+function NotificationsSettingRow({ language }: { language: string }) {
+  const [perm, setPerm] = React.useState<NotificationPermission | 'unsupported'>(() => getPermission());
+  const supported = isPushSupported();
+
+  const handleEnable = async () => {
+    const p = await requestPushPermission();
+    setPerm(p);
+  };
+
+  const label =
+    language === 'hi' ? 'सूचनाएं' : language === 'mr' ? 'सूचना' : 'Notifications';
+  const desc =
+    language === 'hi'
+      ? 'कार्य अनुस्मारक और मौसम अलर्ट प्राप्त करें।'
+      : language === 'mr'
+      ? 'कामाची आठवण आणि हवामान सूचना मिळवा.'
+      : 'Get task reminders and weather alerts.';
+
+  return (
+    <div className="space-y-2 pt-2">
+      <Label className="flex items-center gap-2">
+        <Bell className="h-4 w-4" />
+        {label}
+      </Label>
+      <p className="text-xs text-muted-foreground">{desc}</p>
+      {!supported && (
+        <p className="text-xs text-destructive">
+          {language === 'hi' ? 'इस ब्राउज़र पर समर्थित नहीं' : language === 'mr' ? 'या ब्राउझरवर समर्थित नाही' : 'Not supported on this browser'}
+        </p>
+      )}
+      {supported && perm === 'granted' && (
+        <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+          {language === 'hi' ? 'सक्षम ✓' : language === 'mr' ? 'सक्षम ✓' : 'Enabled ✓'}
+        </Badge>
+      )}
+      {supported && perm === 'denied' && (
+        <p className="text-xs text-amber-600">
+          {language === 'hi' ? 'ब्राउज़र सेटिंग्स में अनुमति दें।' : language === 'mr' ? 'ब्राउझर सेटिंग्जमध्ये परवानगी द्या.' : 'Allow notifications in your browser settings.'}
+        </p>
+      )}
+      {supported && (perm === 'default' || perm === 'granted') && (
+        <Button size="sm" variant="outline" onClick={handleEnable}>
+          <Bell className="h-4 w-4 mr-2" />
+          {perm === 'granted'
+            ? (language === 'hi' ? 'परीक्षण सूचना भेजें' : language === 'mr' ? 'चाचणी सूचना पाठवा' : 'Send test notification')
+            : (language === 'hi' ? 'सूचनाएं सक्षम करें' : language === 'mr' ? 'सूचना सक्षम करा' : 'Enable Notifications')}
+        </Button>
+      )}
+    </div>
+  );
+}

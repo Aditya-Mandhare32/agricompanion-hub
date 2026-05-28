@@ -12,8 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import {
-  Heart, MessageCircle, Loader2, Trash2, Pencil, UserCircle, MapPin, Camera, Save, Grid3X3, Settings
+  Heart, MessageCircle, Loader2, Trash2, Pencil, UserCircle, MapPin, Camera, Save, Grid3X3, Settings, Play
 } from 'lucide-react';
+
+const isVideoUrl = (url: string) => /\.(mp4|webm|mov|avi|m4v|ogg)(\?|$)/i.test(url);
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import {

@@ -4,7 +4,9 @@ import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Heart, MessageCircle, Bookmark, Loader2, BookmarkX } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Loader2, BookmarkX, Play } from 'lucide-react';
+
+const isVideoUrl = (url: string) => /\.(mp4|webm|mov|avi|m4v|ogg)(\?|$)/i.test(url);
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';

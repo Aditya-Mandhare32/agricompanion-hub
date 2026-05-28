@@ -5,6 +5,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Category detection by keywords (multi-language)
+function detectCategory(text: string): "weather" | "government" | "market" | "crops" {
+  const t = text.toLowerCase();
+  if (/(weather|rain|monsoon|drought|flood|cyclone|temperature|forecast|मौसम|बारिश|पाऊस|हवामान)/i.test(t)) return "weather";
+  if (/(government|scheme|subsidy|policy|minister|psf|msp|pm-kisan|सरकार|योजना|अनुदान|शासन)/i.test(t)) return "government";
+  if (/(price|mandi|market|export|import|trade|rupee|कीमत|भाव|बाजार|मंडी)/i.test(t)) return "market";
+  return "crops";
+}
+
+function farmerImpactLine(category: string, lang: string): string {
+  const lines: Record<string, Record<string, string>> = {
+    en: {
+      weather: "🌧 Plan irrigation and harvesting accordingly.",
+      government: "📋 Check eligibility and apply through your nearest center.",
+      market: "💰 Track local mandi rates before selling.",
+      crops: "🌱 Useful insight to improve your yield.",
+    },
+    hi: {
+      weather: "🌧 सिंचाई और कटाई की योजना उसी अनुसार बनाएं।",
+      government: "📋 पात्रता जांचें और नज़दीकी केंद्र पर आवेदन करें।",
+      market: "💰 बेचने से पहले स्थानीय मंडी भाव देखें।",
+      crops: "🌱 आपकी उपज बढ़ाने के लिए उपयोगी जानकारी।",
+    },
+    mr: {
+      weather: "🌧 सिंचन व काढणीचे नियोजन त्यानुसार करा.",
+      government: "📋 पात्रता तपासा आणि जवळच्या केंद्रावर अर्ज करा.",
+      market: "💰 विक्रीपूर्वी स्थानिक बाजार भाव पाहा.",
+      crops: "🌱 तुमचे उत्पन्न वाढवण्यासाठी उपयुक्त माहिती.",
+    },
+  };
+  return (lines[lang] || lines.en)[category] || (lines[lang] || lines.en).crops;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -12,96 +45,64 @@ serve(async (req) => {
 
   try {
     const { language = "en", category = "all" } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const GNEWS_API_KEY = Deno.env.get("GNEWS_API_KEY");
+    if (!GNEWS_API_KEY) throw new Error("GNEWS_API_KEY not configured");
 
-    const today = new Date().toISOString().split("T")[0];
+    const langMap: Record<string, { lang: string; query: string; country: string }> = {
+      en: { lang: "en", query: "(agriculture OR farming OR farmer OR crops OR mandi) AND India", country: "in" },
+      hi: { lang: "hi", query: "कृषि OR खेती OR किसान OR फसल OR मंडी", country: "in" },
+      mr: { lang: "mr", query: "शेती OR शेतकरी OR पीक OR बाजार", country: "in" },
+    };
+    const cfg = langMap[language] || langMap.en;
 
-    const unsplashPhotos = {
-      weather: [
-        "photo-1534088568595-a066f410bcda", "photo-1504608524841-42fe6f032b4b",
-        "photo-1492011221367-f47e3ccd77a0", "photo-1501630834273-4b5604d2ee31",
-        "photo-1530908295418-a12e326966ba"
-      ],
-      government: [
-        "photo-1523292562811-8fa7962a78c8", "photo-1450101499163-c8848c66ca85",
-        "photo-1554224155-6726b3ff858f", "photo-1434030216411-0b793f4b4173",
-        "photo-1541872703-74c5e44368f9"
-      ],
-      market: [
-        "photo-1488459716781-31db52582fe9", "photo-1542838132-92c53300491e",
-        "photo-1599488615731-7e5c2823ff28", "photo-1533900298318-6b8da08a523e",
-        "photo-1526304640581-d334cdbbf45e"
-      ],
-      crops: [
-        "photo-1574323347407-f5e1ad6d020b", "photo-1500382017468-9049fed747ef",
-        "photo-1523348837708-15d4a09cfac2", "photo-1625246333195-78d9c38ad449",
-        "photo-1464226184884-fa280b87c399"
-      ],
+    const url = new URL("https://gnews.io/api/v4/search");
+    url.searchParams.set("q", cfg.query);
+    url.searchParams.set("lang", cfg.lang);
+    url.searchParams.set("country", cfg.country);
+    url.searchParams.set("max", "20");
+    url.searchParams.set("sortby", "publishedAt");
+    url.searchParams.set("apikey", GNEWS_API_KEY);
+
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`GNews error ${res.status}: ${txt.slice(0, 200)}`);
+    }
+    const json = await res.json();
+    const articles = Array.isArray(json.articles) ? json.articles : [];
+
+    const fallbackImages: Record<string, string> = {
+      weather: "https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=400&q=80&fit=crop",
+      government: "https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?w=400&q=80&fit=crop",
+      market: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&q=80&fit=crop",
+      crops: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&q=80&fit=crop",
     };
 
-    const prompt = `You are an Indian agriculture news aggregator. Generate exactly 20 realistic, current agricultural news articles for Indian farmers as of ${today}.
-
-RESPOND IN ${language === "hi" ? "Hindi (Devanagari)" : language === "mr" ? "Marathi (Devanagari)" : "English"}.
-
-Each article must have real-world plausibility with actual scheme names, real crop names, real Indian locations. Each must be UNIQUE with different topics.
-${category !== "all" ? `Focus on category: ${category}` : "Include 5 weather, 5 government, 5 market, 5 crops articles."}
-
-Return ONLY a JSON array (no other text, no markdown):
-[{"title":"headline","description":"2-3 sentence summary","url":"https://source.com/slug","image":"USE_PLACEHOLDER","source":"real Indian ag news source","category":"weather|government|market|crops","region":"Indian state","farmerImpact":"one-line tip with emoji","publishedAt":"ISO date within last 3 days"}]`;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`AI error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "[]";
-    
-    // Robust JSON extraction - find the array
-    let cleanContent = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const firstBracket = cleanContent.indexOf("[");
-    const lastBracket = cleanContent.lastIndexOf("]");
-    if (firstBracket !== -1 && lastBracket !== -1) {
-      cleanContent = cleanContent.substring(firstBracket, lastBracket + 1);
-    }
-    
-    let news;
-    try {
-      news = JSON.parse(cleanContent);
-    } catch {
-      console.error("JSON parse failed, content:", cleanContent.substring(0, 200));
-      news = [];
-    }
-
-    // Replace placeholder images with actual Unsplash URLs
-    news = news.map((item: any, index: number) => {
-      const cat = item.category || "crops";
-      const photos = unsplashPhotos[cat as keyof typeof unsplashPhotos] || unsplashPhotos.crops;
-      const photoId = photos[index % photos.length];
+    let news = articles.map((a: any) => {
+      const cat = detectCategory(`${a.title || ""} ${a.description || ""}`);
       return {
-        ...item,
-        image: `https://images.unsplash.com/${photoId}?w=400&q=80&fit=crop`,
+        title: a.title || "",
+        description: a.description || a.content || "",
+        url: a.url || "#",
+        image: a.image || fallbackImages[cat],
+        source: a.source?.name || "GNews",
+        category: cat,
+        region: "India",
+        publishedAt: a.publishedAt || new Date().toISOString(),
+        farmerImpact: farmerImpactLine(cat, language),
       };
     });
+
+    if (category && category !== "all") {
+      news = news.filter((n: any) => n.category === category);
+    }
 
     return new Response(JSON.stringify({ news }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Fetch news error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error", news: [] }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -4,7 +4,9 @@ import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Heart, MessageCircle, Bookmark, Loader2, BookmarkX } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Loader2, BookmarkX, Play } from 'lucide-react';
+
+const isVideoUrl = (url: string) => /\.(mp4|webm|mov|avi|m4v|ogg)(\?|$)/i.test(url);
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
@@ -111,7 +113,16 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
           <div key={post.id} className="relative group cursor-pointer" onClick={() => setSelectedPost(post)}>
             <AspectRatio ratio={1}>
               {post.image_url ? (
-                <img src={post.image_url} alt="Post" className="w-full h-full object-cover rounded-sm" />
+                isVideoUrl(post.image_url) ? (
+                  <div className="relative w-full h-full">
+                    <video src={post.image_url} className="w-full h-full object-cover rounded-sm" muted playsInline preload="metadata" />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="bg-black/50 rounded-full p-2"><Play className="h-5 w-5 text-white fill-white" /></div>
+                    </div>
+                  </div>
+                ) : (
+                  <img src={post.image_url} alt="Post" className="w-full h-full object-cover rounded-sm" />
+                )
               ) : (
                 <div className="w-full h-full bg-muted flex items-center justify-center rounded-sm p-2">
                   <p className="text-xs text-muted-foreground line-clamp-4 text-center">{post.content}</p>
@@ -144,7 +155,9 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
                 </div>
               </DialogHeader>
               {selectedPost.image_url && (
-                <AspectRatio ratio={1}><img src={selectedPost.image_url} alt="Post" className="w-full h-full object-cover rounded-lg" /></AspectRatio>
+                isVideoUrl(selectedPost.image_url)
+                  ? <video src={selectedPost.image_url} controls className="w-full rounded-lg" />
+                  : <AspectRatio ratio={1}><img src={selectedPost.image_url} alt="Post" className="w-full h-full object-cover rounded-lg" /></AspectRatio>
               )}
               <p className="text-sm whitespace-pre-wrap">{selectedPost.content}</p>
               <div className="flex items-center justify-between pt-2 border-t">

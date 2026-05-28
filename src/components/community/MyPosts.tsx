@@ -12,8 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import {
-  Heart, MessageCircle, Loader2, Trash2, Pencil, UserCircle, MapPin, Camera, Save, Grid3X3, Settings
+  Heart, MessageCircle, Loader2, Trash2, Pencil, UserCircle, MapPin, Camera, Save, Grid3X3, Settings, Play
 } from 'lucide-react';
+
+const isVideoUrl = (url: string) => /\.(mp4|webm|mov|avi|m4v|ogg)(\?|$)/i.test(url);
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -183,7 +185,16 @@ export function MyPosts() {
               <div key={post.id} className="relative group cursor-pointer" onClick={() => { setEditingPost(post); setEditContent(post.content); }}>
                 <AspectRatio ratio={1}>
                   {post.image_url ? (
-                    <img src={post.image_url} alt="Post" className="w-full h-full object-cover rounded-sm" />
+                    isVideoUrl(post.image_url) ? (
+                      <div className="relative w-full h-full">
+                        <video src={post.image_url} className="w-full h-full object-cover rounded-sm" muted playsInline preload="metadata" />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="bg-black/50 rounded-full p-2"><Play className="h-5 w-5 text-white fill-white" /></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <img src={post.image_url} alt="Post" className="w-full h-full object-cover rounded-sm" />
+                    )
                   ) : (
                     <div className="w-full h-full bg-muted flex items-center justify-center rounded-sm p-2">
                       <p className="text-xs text-muted-foreground line-clamp-4 text-center">{post.content}</p>
@@ -207,7 +218,9 @@ export function MyPosts() {
             <DialogTitle>{language === 'hi' ? 'पोस्ट' : language === 'mr' ? 'पोस्ट' : 'Post'}</DialogTitle>
           </DialogHeader>
           {editingPost?.image_url && (
-            <AspectRatio ratio={1}><img src={editingPost.image_url} alt="Post" className="w-full h-full object-cover rounded-lg" /></AspectRatio>
+            isVideoUrl(editingPost.image_url)
+              ? <video src={editingPost.image_url} controls className="w-full rounded-lg" />
+              : <AspectRatio ratio={1}><img src={editingPost.image_url} alt="Post" className="w-full h-full object-cover rounded-lg" /></AspectRatio>
           )}
           <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="min-h-[80px]" />
           <DialogFooter className="flex gap-2">

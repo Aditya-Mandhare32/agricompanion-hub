@@ -3,12 +3,14 @@ import { Header } from './Header';
 import { Footer } from './Footer';
 import { BottomNav } from './BottomNav';
 import { Chatbot } from '@/components/Chatbot';
+import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export function Layout({ children }: LayoutProps) {
+  useCommunityNotifications();
   return (
     <div className="min-h-screen flex flex-col">
       <Header />

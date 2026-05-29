@@ -94,6 +94,32 @@ export function useBackfillCropEvents(language: string = 'en') {
             return;
           }
           console.log(`[backfill] Generated ${inserts.length} events for ${missing.length} crops`);
+
+          // Crop Schedule Generated notification per crop
+          const { createNotification } = await import('@/lib/notify');
+          for (const crop of missing) {
+            const cropInserts = inserts.filter((i) => i.crop_name === crop.crop_name);
+            if (!cropInserts.length) continue;
+            await createNotification({
+              userId: user.id,
+              type: 'schedule_generated',
+              title: language === 'hi' ? 'फसल कार्यक्रम तैयार' : language === 'mr' ? 'पीक वेळापत्रक तयार' : 'Crop Schedule Generated',
+              message: language === 'hi'
+                ? `${crop.crop_name} के लिए ${cropInserts.length} गतिविधियाँ जोड़ी गईं`
+                : language === 'mr'
+                ? `${crop.crop_name} साठी ${cropInserts.length} क्रियाकलाप जोडले`
+                : `${cropInserts.length} activities scheduled for ${crop.crop_name}`,
+              priority: 'normal',
+              action_type: 'view_calendar',
+              dedupeKey: `schedule-${crop.id}`,
+            });
+          }
+
+          // Also trigger backend pass to seed today/upcoming/harvest notifs
+          supabase.functions.invoke('generate-smart-notifications', {
+            body: { userId: user.id, language, mode: 'user' },
+          }).catch(() => {});
+
           qc.invalidateQueries({ queryKey: ['calendarEvents'] });
           qc.invalidateQueries({ queryKey: ['todayTasks'] });
           qc.invalidateQueries({ queryKey: ['upcomingEvents'] });

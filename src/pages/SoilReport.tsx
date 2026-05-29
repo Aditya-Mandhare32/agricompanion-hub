@@ -208,6 +208,25 @@ export default function SoilReport() {
         language === 'mr' ? 'विश्लेषण जतन केले!' : 
         'Analysis saved!'
       );
+      // Fire "Soil Report Ready" notification
+      try {
+        const { createNotification } = await import('@/lib/notify');
+        const findings: string[] = [];
+        if (soilData.nitrogen < 80) findings.push(language === 'hi' ? 'कम नाइट्रोजन' : language === 'mr' ? 'कमी नायट्रोजन' : 'low nitrogen');
+        if (soilData.ph > 8) findings.push(language === 'hi' ? 'उच्च pH' : language === 'mr' ? 'उच्च pH' : 'high pH');
+        if (soilData.ph < 5.5) findings.push(language === 'hi' ? 'कम pH' : language === 'mr' ? 'कमी pH' : 'low pH');
+        if (soilData.phosphorus < 20) findings.push(language === 'hi' ? 'कम फॉस्फोरस' : language === 'mr' ? 'कमी फॉस्फरस' : 'low phosphorus');
+        const findingsTxt = findings.length ? findings.join(', ') : (language === 'hi' ? 'सामान्य' : language === 'mr' ? 'सामान्य' : 'balanced');
+        await createNotification({
+          userId: user.id,
+          type: 'soil_ready',
+          title: language === 'hi' ? 'मिट्टी रिपोर्ट तैयार' : language === 'mr' ? 'माती अहवाल तयार' : 'Soil Report Ready',
+          message: `${language === 'hi' ? 'मुख्य निष्कर्ष' : language === 'mr' ? 'मुख्य निष्कर्ष' : 'Key findings'}: ${findingsTxt}`,
+          priority: findings.length > 1 ? 'high' : 'normal',
+          action_type: 'view_soil',
+          dedupeKey: `soil-${Date.now()}`,
+        });
+      } catch {}
     } catch (error) {
       console.error('Error saving analysis:', error);
     } finally {

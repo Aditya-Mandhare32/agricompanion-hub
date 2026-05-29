@@ -64,24 +64,54 @@
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
  
-   const fetchWeather = async () => {
-     setLoading(true);
-     setError(null);
-     
-     try {
-       const { data, error: fnError } = await supabase.functions.invoke('get-weather', {
-         body: { city, language },
-       });
- 
-       if (fnError) throw fnError;
-       setWeather(data);
-     } catch (err) {
-       console.error('Weather fetch error:', err);
-       setError('Failed to load weather');
-     } finally {
-       setLoading(false);
-     }
-   };
+  const fetchWeather = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('get-weather', {
+        body: { city, language },
+      });
+
+      if (fnError) throw fnError;
+      setWeather(data);
+
+      // Emit weather warnings (deduped per day)
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id;
+        if (userId && data) {
+          const { createNotification } = await import('@/lib/notify');
+          const today = new Date().toISOString().split('T')[0];
+          const t = data.current?.temperature;
+          const rain = data.totalWeeklyRainfall;
+          if (typeof t === 'number' && (t > 40 || t < 5)) {
+            await createNotification({
+              userId, type: 'weather_warning',
+              title: language === 'hi' ? 'मौसम चेतावनी' : language === 'mr' ? 'हवामान इशारा' : 'Weather Warning',
+              message: `${language === 'hi' ? 'तापमान' : language === 'mr' ? 'तापमान' : 'Temperature'}: ${Math.round(t)}°C`,
+              priority: 'high', action_type: 'view_calendar',
+              dedupeKey: `weather-temp-${today}`,
+            });
+          }
+          if (typeof rain === 'number' && rain > 20) {
+            await createNotification({
+              userId, type: 'weather_warning',
+              title: language === 'hi' ? 'भारी बारिश' : language === 'mr' ? 'जोरदार पाऊस' : 'Heavy Rain Forecast',
+              message: `${Math.round(rain)}mm ${language === 'hi' ? 'इस सप्ताह' : language === 'mr' ? 'या आठवड्यात' : 'this week'}`,
+              priority: 'high', action_type: 'view_calendar',
+              dedupeKey: `weather-rain-${today}`,
+            });
+          }
+        }
+      } catch {}
+    } catch (err) {
+      console.error('Weather fetch error:', err);
+      setError('Failed to load weather');
+    } finally {
+      setLoading(false);
+    }
+  };
  
    useEffect(() => {
      fetchWeather();

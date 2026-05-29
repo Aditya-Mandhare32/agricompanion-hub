@@ -447,7 +447,6 @@ export default function CalendarPage() {
               </div>
             )}
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => setIsAddCycleDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />{language === 'hi' ? 'फसल चक्र जोड़ें' : language === 'mr' ? 'पीक चक्र जोडा' : 'Add Crop Cycle'}</Button>
               <Button variant="outline" onClick={() => setIsAddOtherOpen(true)}><Sprout className="h-4 w-4 mr-2" />{language === 'hi' ? 'अन्य जोड़ें' : language === 'mr' ? 'इतर जोडा' : 'Add Other'}</Button>
             </div>
           </CardContent>

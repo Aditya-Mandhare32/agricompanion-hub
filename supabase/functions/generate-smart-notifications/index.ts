@@ -3,165 +3,176 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+type Mode = "daily" | "upcoming" | "weekly" | "user";
+
+const t = (lang: string, en: string, hi: string, mr: string) =>
+  lang === "hi" ? hi : lang === "mr" ? mr : en;
+
+async function insertIfNew(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  type: string,
+  dedupeKey: string,
+  payload: Record<string, unknown>,
+) {
+  const since = new Date(Date.now() - 18 * 3600 * 1000).toISOString();
+  const { data: existing } = await supabase
+    .from("smart_notifications")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("type", type)
+    .eq("dismissed", false)
+    .gte("created_at", since)
+    .ilike("action_data->>dedupeKey", dedupeKey)
+    .limit(1);
+  if (existing && existing.length > 0) return;
+  await supabase.from("smart_notifications").insert({
+    user_id: userId,
+    type,
+    ...payload,
+    action_data: { ...(payload.action_data ?? {}), dedupeKey },
+    expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+  });
+}
+
+async function processUser(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  language: string,
+  mode: Mode,
+) {
+  const today = new Date().toISOString().split("T")[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  const in7 = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+
+  // ---- CALENDAR EVENTS ----
+  const { data: events } = await supabase
+    .from("calendar_events")
+    .select("*")
+    .eq("user_id", userId);
+
+  const todays = (events || []).filter((e) => e.event_date === today && !e.completed);
+  const overdue = (events || []).filter((e) => e.event_date < today && !e.completed);
+  const upcoming = (events || []).filter((e) => e.event_date === tomorrow && !e.completed);
+
+  if ((mode === "daily" || mode === "user") && todays.length > 0) {
+    const list = todays.map((e) => `${e.crop_name} – ${e.event_type}`).join(", ");
+    await insertIfNew(supabase, userId, "task_today", `today-${today}`, {
+      title: t(language, "Tasks Today", "आज के काम", "आजची कामे"),
+      message: `${todays.length} ${t(language, "task(s) scheduled:", "कार्य निर्धारित हैं:", "कामे नियोजित आहेत:")} ${list}`,
+      priority: "high",
+      action_type: "view_calendar",
+    });
   }
 
-  try {
-    const { userId, language = "en" } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  if (mode === "upcoming" || mode === "daily" || mode === "user") {
+    for (const e of overdue.slice(0, 3)) {
+      await insertIfNew(supabase, userId, "overdue", `overdue-${e.id}`, {
+        title: t(language, "Overdue Task", "बकाया कार्य", "रखडलेले काम"),
+        message: `${e.event_type} – ${e.crop_name} (${e.event_date})`,
+        priority: "high",
+        action_type: "view_calendar",
+      });
+    }
+    for (const e of upcoming.slice(0, 3)) {
+      await insertIfNew(supabase, userId, "upcoming_activity", `upcoming-${e.id}`, {
+        title: t(language, "Upcoming Activity", "आगामी गतिविधि", "आगामी क्रियाकलाप"),
+        message: t(language,
+          `Tomorrow: ${e.event_type} for ${e.crop_name}`,
+          `कल: ${e.crop_name} के लिए ${e.event_type}`,
+          `उद्या: ${e.crop_name} साठी ${e.event_type}`),
+        priority: "normal",
+        action_type: "view_calendar",
+      });
+    }
+  }
 
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Fetch user's calendar events
-    const { data: events } = await supabase
-      .from("calendar_events")
-      .select("*")
-      .eq("user_id", userId)
-      .gte("event_date", new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0])
-      .lte("event_date", new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0]);
-
-    // Fetch latest soil analysis
-    const { data: soilAnalyses } = await supabase
-      .from("saved_soil_analyses")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    // Fetch crop history
-    const { data: cropHistory } = await supabase
+  // ---- HARVEST COMING (within 7 days) ----
+  if (mode === "daily" || mode === "user") {
+    const { data: crops } = await supabase
       .from("crop_history")
       .select("*")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(5);
+      .not("expected_harvest_date", "is", null)
+      .gte("expected_harvest_date", today)
+      .lte("expected_harvest_date", in7);
+    for (const c of crops || []) {
+      await insertIfNew(supabase, userId, "harvest_coming", `harvest-${c.id}`, {
+        title: t(language, "Harvest Coming", "कटाई आ रही है", "कापणी जवळ आली"),
+        message: t(language,
+          `${c.crop_name} harvest on ${c.expected_harvest_date}`,
+          `${c.crop_name} कटाई ${c.expected_harvest_date} को`,
+          `${c.crop_name} कापणी ${c.expected_harvest_date} रोजी`),
+        priority: "normal",
+        action_type: "view_calendar",
+      });
+    }
+  }
 
-    // Fetch weather for user location
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("location")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    let weatherInfo = "";
-    try {
-      const weatherResp = await fetch(
-        `${supabaseUrl}/functions/v1/get-weather`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
-          body: JSON.stringify({ city: profile?.location?.split(",")[0]?.trim() || "Pune", language }),
-        }
-      );
-      if (weatherResp.ok) {
-        const wd = await weatherResp.json();
-        weatherInfo = `Current: ${wd.current?.temperature}°C, Humidity: ${wd.current?.humidity}%, Weekly Rain: ${wd.totalWeeklyRainfall}mm. Forecast: ${wd.forecast?.slice(0, 3).map((d: any) => `${d.day}: ${d.temperature_max}°C, Rain: ${d.precipitation}mm`).join("; ")}`;
-      }
-    } catch {}
-
-    const today = new Date().toISOString().split("T")[0];
-    const missedTasks = (events || []).filter(
-      (e) => e.event_date < today && !e.completed
-    );
-    const upcomingTasks = (events || []).filter(
-      (e) => e.event_date >= today && e.event_date <= new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0]
-    );
-
-    const langMap: Record<string, string> = {
-      en: "English",
-      hi: "Hindi (respond in Devanagari script)",
-      mr: "Marathi (respond in Devanagari script)",
-    };
-
-    const prompt = `You are an AI farming assistant. Generate smart notifications for a farmer based on their data.
-
-RESPOND ENTIRELY IN ${langMap[language] || "English"}.
-
-Current Date: ${today}
-Weather: ${weatherInfo || "Not available"}
-Missed Tasks: ${JSON.stringify(missedTasks.map((e) => ({ crop: e.crop_name, type: e.event_type, date: e.event_date })))}
-Upcoming Tasks: ${JSON.stringify(upcomingTasks.map((e) => ({ crop: e.crop_name, type: e.event_type, date: e.event_date, completed: e.completed })))}
-Soil Analysis: ${soilAnalyses?.[0] ? JSON.stringify({ healthScore: (soilAnalyses[0].analysis_data as any)?.healthScore, status: (soilAnalyses[0].analysis_data as any)?.healthStatus }) : "None"}
-Recent Crops: ${JSON.stringify(cropHistory?.map((c) => c.crop_name) || [])}
-
-Generate a JSON array of notifications. Each notification:
-{
-  "title": "short title",
-  "message": "actionable message with specific guidance",
-  "type": "weather_alert" | "crop_risk" | "task_reminder" | "nutrient_alert" | "irrigation" | "daily_summary",
-  "priority": "high" | "normal" | "low",
-  "action_type": "mark_complete" | "view_calendar" | "view_soil" | "remind_later" | null,
-  "action_data": {} or null
+  // ---- WEEKLY SUMMARY ----
+  if (mode === "weekly") {
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+    const weekEvents = (events || []).filter((e) => e.event_date >= weekAgo && e.event_date <= today);
+    const completed = weekEvents.filter((e) => e.completed).length;
+    const pending = weekEvents.filter((e) => !e.completed).length;
+    await insertIfNew(supabase, userId, "weekly_summary", `week-${today}`, {
+      title: t(language, "Weekly Farm Summary", "साप्ताहिक खेत सारांश", "साप्ताहिक शेत सारांश"),
+      message: t(language,
+        `Completed: ${completed} • Pending: ${pending}`,
+        `पूर्ण: ${completed} • बाकी: ${pending}`,
+        `पूर्ण: ${completed} • प्रलंबित: ${pending}`),
+      priority: "normal",
+      action_type: "view_calendar",
+    });
+  }
 }
 
-Rules:
-1. If rain is expected, cancel/adjust irrigation reminders
-2. If tasks are missed, warn about crop risk with corrective action
-3. Include one daily summary notification
-4. Generate 3-6 notifications total
-5. Base alerts on actual crop stage and soil data
-6. All text in target language
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-Return ONLY a valid JSON array, no markdown.`;
+  try {
+    const body = await req.json().catch(() => ({}));
+    const mode: Mode = body.mode ?? "user";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (mode === "user") {
+      const { userId, language = "en" } = body;
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "userId required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "API quota exceeded" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      throw new Error(`AI error: ${response.status}`);
+      await processUser(supabase, userId, language, "user");
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    const cleanContent = content?.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const notifications = JSON.parse(cleanContent);
-
-    // Save to database
-    const notifRecords = notifications.map((n: any) => ({
-      user_id: userId,
-      title: n.title,
-      message: n.message,
-      type: n.type,
-      priority: n.priority || "normal",
-      action_type: n.action_type || null,
-      action_data: n.action_data || null,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    }));
-
-    await supabase.from("smart_notifications").insert(notifRecords);
-
-    return new Response(JSON.stringify({ notifications }), {
+    // Batch mode: iterate every profile
+    const { data: profiles } = await supabase.from("profiles").select("user_id, language");
+    let count = 0;
+    for (const p of profiles || []) {
+      try {
+        await processUser(supabase, p.user_id, p.language || "en", mode);
+        count++;
+      } catch (e) {
+        console.error(`processUser failed for ${p.user_id}:`, e);
+      }
+    }
+    return new Response(JSON.stringify({ ok: true, mode, processed: count }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Smart notifications error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("generate-smart-notifications error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });

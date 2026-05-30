@@ -312,6 +312,12 @@ export function Header() {
           </Sheet>
         </div>
       </div>
+      <NotificationDetailModal
+        notif={modalNotif as NotifLike | null}
+        open={!!modalNotif}
+        onOpenChange={(v) => !v && setModalNotif(null)}
+        onContinue={handleModalContinue}
+      />
     </header>
   );
 }

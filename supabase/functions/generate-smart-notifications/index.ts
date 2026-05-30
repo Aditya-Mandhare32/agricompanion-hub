@@ -131,6 +131,7 @@ async function processUser(
         `पूर्ण: ${completed} • प्रलंबित: ${pending}`),
       priority: "normal",
       action_type: "view_calendar",
+      action_data: { params: { completed, pending } },
     });
   }
 }

@@ -92,8 +92,22 @@ export default function CalendarPage() {
   const { data: allDbCrops } = useAllCropsFromDB();
   const deleteCropMutation = useDeleteCrop();
   
+  const [searchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const highlight = searchParams.get('highlight');
+
+  // React to ?date= query param coming from notification clicks
+  useEffect(() => {
+    const d = searchParams.get('date');
+    if (d) {
+      const parsed = new Date(d);
+      if (!isNaN(parsed.getTime())) {
+        setSelectedDate(parsed);
+        setCurrentMonth(parsed);
+      }
+    }
+  }, [searchParams]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'month' | 'timeline'>('month');
   const [cropCycles, setCropCycles] = useState<CropCycle[]>([]);

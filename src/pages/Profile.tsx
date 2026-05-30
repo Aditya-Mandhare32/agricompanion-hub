@@ -561,6 +561,10 @@ export default function Profile() {
 
                 <NotificationsSettingRow language={language} />
 
+                <NotificationHistory />
+
+
+
 
                 <div className="pt-4 border-t">
                   <Button variant="destructive" onClick={handleLogout}>

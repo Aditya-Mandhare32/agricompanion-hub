@@ -17,6 +17,8 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
+import { routeForNotification, needsDetailModal, translateNotification, type NotifLike } from '@/lib/notificationActions';
+import { NotificationDetailModal } from '@/components/notifications/NotificationDetailModal';
 
 const navItems = [
   { path: '/dashboard', label: 'dashboard', icon: BarChart3, authOnly: true },

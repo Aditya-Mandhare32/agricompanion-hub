@@ -132,14 +132,19 @@ export function Header() {
 
   const handleClick = async (n: SmartNotif) => {
     await markRead(n.id);
-    switch (n.action_type) {
-      case 'view_calendar': navigate('/calendar'); break;
-      case 'view_soil': navigate('/soil-report'); break;
-      case 'view_messages': navigate('/community?tab=messages'); break;
-      case 'view_community': navigate('/community'); break;
-      case 'view_market': navigate('/dashboard'); break;
-      default: navigate('/dashboard');
+    if (needsDetailModal(n.type)) {
+      setModalNotif(n);
+      return;
     }
+    const { path } = routeForNotification(n as NotifLike);
+    navigate(path);
+  };
+
+  const handleModalContinue = () => {
+    if (!modalNotif) return;
+    const { path } = routeForNotification(modalNotif as NotifLike);
+    setModalNotif(null);
+    navigate(path);
   };
 
   const languages = [

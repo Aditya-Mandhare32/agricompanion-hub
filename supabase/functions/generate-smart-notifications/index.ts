@@ -66,6 +66,7 @@ async function processUser(
       message: `${todays.length} ${t(language, "task(s) scheduled:", "कार्य निर्धारित हैं:", "कामे नियोजित आहेत:")} ${list}`,
       priority: "high",
       action_type: "view_calendar",
+      action_data: { params: { count: todays.length, list, date: today } },
     });
   }
 
@@ -76,6 +77,7 @@ async function processUser(
         message: `${e.event_type} – ${e.crop_name} (${e.event_date})`,
         priority: "high",
         action_type: "view_calendar",
+        action_data: { params: { crop_name: e.crop_name, event_type: e.event_type, event_date: e.event_date, event_id: e.id } },
       });
     }
     for (const e of upcoming.slice(0, 3)) {
@@ -87,6 +89,7 @@ async function processUser(
           `उद्या: ${e.crop_name} साठी ${e.event_type}`),
         priority: "normal",
         action_type: "view_calendar",
+        action_data: { params: { crop_name: e.crop_name, event_type: e.event_type, event_date: e.event_date, event_id: e.id } },
       });
     }
   }
@@ -109,6 +112,7 @@ async function processUser(
           `${c.crop_name} कापणी ${c.expected_harvest_date} रोजी`),
         priority: "normal",
         action_type: "view_calendar",
+        action_data: { params: { crop_name: c.crop_name, event_date: c.expected_harvest_date } },
       });
     }
   }

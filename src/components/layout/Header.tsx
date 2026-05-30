@@ -224,6 +224,7 @@ export function Header() {
                     ) : (
                       notifs.map((n) => {
                         const { Icon, cls } = getIcon(n.type);
+                        const tr = translateNotification(n as NotifLike, language);
                         return (
                           <button key={n.id} onClick={() => handleClick(n)}
                             className={`w-full text-left flex gap-3 p-3 border-b last:border-b-0 hover:bg-muted/60 transition-colors ${!n.read ? 'bg-primary/5' : ''}`}>
@@ -232,10 +233,10 @@ export function Header() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold truncate">{n.title}</span>
+                                <span className="text-sm font-semibold truncate">{tr.title}</span>
                                 {!n.read && <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />}
                               </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{tr.message}</p>
                               <span className="text-[10px] text-muted-foreground/70">
                                 {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                               </span>

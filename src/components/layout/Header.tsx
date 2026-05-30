@@ -74,6 +74,7 @@ export function Header() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifs, setNotifs] = useState<SmartNotif[]>([]);
+  const [modalNotif, setModalNotif] = useState<SmartNotif | null>(null);
 
   const unreadCount = notifs.filter((n) => !n.read && !n.dismissed).length;
 

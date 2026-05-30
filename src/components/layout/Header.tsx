@@ -17,6 +17,8 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
+import { routeForNotification, needsDetailModal, translateNotification, type NotifLike } from '@/lib/notificationActions';
+import { NotificationDetailModal } from '@/components/notifications/NotificationDetailModal';
 
 const navItems = [
   { path: '/dashboard', label: 'dashboard', icon: BarChart3, authOnly: true },
@@ -72,6 +74,7 @@ export function Header() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifs, setNotifs] = useState<SmartNotif[]>([]);
+  const [modalNotif, setModalNotif] = useState<SmartNotif | null>(null);
 
   const unreadCount = notifs.filter((n) => !n.read && !n.dismissed).length;
 
@@ -129,14 +132,19 @@ export function Header() {
 
   const handleClick = async (n: SmartNotif) => {
     await markRead(n.id);
-    switch (n.action_type) {
-      case 'view_calendar': navigate('/calendar'); break;
-      case 'view_soil': navigate('/soil-report'); break;
-      case 'view_messages': navigate('/community?tab=messages'); break;
-      case 'view_community': navigate('/community'); break;
-      case 'view_market': navigate('/dashboard'); break;
-      default: navigate('/dashboard');
+    if (needsDetailModal(n.type)) {
+      setModalNotif(n);
+      return;
     }
+    const { path } = routeForNotification(n as NotifLike);
+    navigate(path);
+  };
+
+  const handleModalContinue = () => {
+    if (!modalNotif) return;
+    const { path } = routeForNotification(modalNotif as NotifLike);
+    setModalNotif(null);
+    navigate(path);
   };
 
   const languages = [
@@ -216,6 +224,7 @@ export function Header() {
                     ) : (
                       notifs.map((n) => {
                         const { Icon, cls } = getIcon(n.type);
+                        const tr = translateNotification(n as NotifLike, language);
                         return (
                           <button key={n.id} onClick={() => handleClick(n)}
                             className={`w-full text-left flex gap-3 p-3 border-b last:border-b-0 hover:bg-muted/60 transition-colors ${!n.read ? 'bg-primary/5' : ''}`}>
@@ -224,10 +233,10 @@ export function Header() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold truncate">{n.title}</span>
+                                <span className="text-sm font-semibold truncate">{tr.title}</span>
                                 {!n.read && <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />}
                               </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{tr.message}</p>
                               <span className="text-[10px] text-muted-foreground/70">
                                 {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                               </span>
@@ -303,6 +312,12 @@ export function Header() {
           </Sheet>
         </div>
       </div>
+      <NotificationDetailModal
+        notif={modalNotif as NotifLike | null}
+        open={!!modalNotif}
+        onOpenChange={(v) => !v && setModalNotif(null)}
+        onContinue={handleModalContinue}
+      />
     </header>
   );
 }

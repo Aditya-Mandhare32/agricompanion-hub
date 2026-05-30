@@ -40,6 +40,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { isPushSupported, getPermission, requestPushPermission } from '@/lib/pushNotifications';
+import { NotificationHistory } from '@/components/notifications/NotificationHistory';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -559,6 +560,10 @@ export default function Profile() {
                 </div>
 
                 <NotificationsSettingRow language={language} />
+
+                <NotificationHistory />
+
+
 
 
                 <div className="pt-4 border-t">

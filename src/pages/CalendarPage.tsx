@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,8 +92,22 @@ export default function CalendarPage() {
   const { data: allDbCrops } = useAllCropsFromDB();
   const deleteCropMutation = useDeleteCrop();
   
+  const [searchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const highlight = searchParams.get('highlight');
+
+  // React to ?date= query param coming from notification clicks
+  useEffect(() => {
+    const d = searchParams.get('date');
+    if (d) {
+      const parsed = new Date(d);
+      if (!isNaN(parsed.getTime())) {
+        setSelectedDate(parsed);
+        setCurrentMonth(parsed);
+      }
+    }
+  }, [searchParams]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'month' | 'timeline'>('month');
   const [cropCycles, setCropCycles] = useState<CropCycle[]>([]);
@@ -379,6 +393,23 @@ export default function CalendarPage() {
       </section>
 
       <div className="container mx-auto px-4 py-8">
+        {highlight && (
+          <div className={`mb-4 rounded-lg border px-4 py-3 text-sm flex items-center gap-2 ${
+            highlight === 'overdue' ? 'bg-red-50 border-red-200 text-red-700' :
+            highlight === 'harvest' ? 'bg-rose-50 border-rose-200 text-rose-700' :
+            highlight === 'new' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+            'bg-blue-50 border-blue-200 text-blue-700'
+          }`}>
+            <Bell className="h-4 w-4" />
+            <span>
+              {highlight === 'overdue' && (language === 'hi' ? 'बकाया कार्य लाल रंग में दिखाए गए हैं' : language === 'mr' ? 'रखडलेली कामे लाल रंगात दर्शविली' : 'Overdue tasks highlighted below')}
+              {highlight === 'today' && (language === 'hi' ? 'आज के लिए निर्धारित कार्य' : language === 'mr' ? 'आजची नियोजित कामे' : "Today's scheduled tasks")}
+              {highlight === 'upcoming' && (language === 'hi' ? 'चयनित दिन की गतिविधि' : language === 'mr' ? 'निवडलेल्या दिवशी क्रियाकलाप' : 'Activity on selected day')}
+              {highlight === 'harvest' && (language === 'hi' ? 'कटाई की तारीख दिखाई गई' : language === 'mr' ? 'कापणीची तारीख दर्शविली' : 'Harvest date shown')}
+              {highlight === 'new' && (language === 'hi' ? 'नई फसल अनुसूची जोड़ी गई' : language === 'mr' ? 'नवीन पीक वेळापत्रक जोडले' : 'New crop schedule added')}
+            </span>
+          </div>
+        )}
         {/* View Toggle & Export */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">

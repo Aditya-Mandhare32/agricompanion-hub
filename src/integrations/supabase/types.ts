@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          reason: string | null
+          target_user_email: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          target_user_email?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          target_user_email?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      admin_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          sent_by: string
+          sent_to: string | null
+          target_group: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          sent_by: string
+          sent_to?: string | null
+          target_group?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          sent_by?: string
+          sent_to?: string | null
+          target_group?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      blocked_users: {
+        Row: {
+          blocked_by_admin: boolean
+          blocked_user_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_by_admin?: boolean
+          blocked_user_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_by_admin?: boolean
+          blocked_user_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           completed: boolean | null
@@ -427,6 +517,42 @@ export type Database = {
           },
         ]
       }
+      post_reports: {
+        Row: {
+          admin_action: string | null
+          created_at: string
+          id: string
+          reason: string
+          reported_post_id: string
+          reported_user_id: string
+          reporter_id: string
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          admin_action?: string | null
+          created_at?: string
+          id?: string
+          reason: string
+          reported_post_id: string
+          reported_user_id: string
+          reporter_id: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          admin_action?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          reported_post_id?: string
+          reported_user_id?: string
+          reporter_id?: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           content: string
@@ -460,9 +586,11 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           id: string
+          is_admin: boolean
           land_owned: string | null
           language: string | null
           location: string | null
+          phone: string | null
           updated_at: string
           user_id: string
           username: string
@@ -472,9 +600,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          is_admin?: boolean
           land_owned?: string | null
           language?: string | null
           location?: string | null
+          phone?: string | null
           updated_at?: string
           user_id: string
           username: string
@@ -484,9 +614,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          is_admin?: boolean
           land_owned?: string | null
           language?: string | null
           location?: string | null
+          phone?: string | null
           updated_at?: string
           user_id?: string
           username?: string
@@ -600,12 +732,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_status: {
+        Row: {
+          reason: string | null
+          restricted_until: string | null
+          status: string
+          updated_at: string
+          updated_by_admin: string | null
+          user_id: string
+        }
+        Insert: {
+          reason?: string | null
+          restricted_until?: string | null
+          status?: string
+          updated_at?: string
+          updated_by_admin?: string | null
+          user_id: string
+        }
+        Update: {
+          reason?: string | null
+          restricted_until?: string | null
+          status?: string
+          updated_at?: string
+          updated_by_admin?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      can_user_post: { Args: { uid: string }; Returns: boolean }
+      is_admin: { Args: { uid: string }; Returns: boolean }
       is_conversation_member: { Args: { conv_id: string }; Returns: boolean }
+      is_post_author_visible: {
+        Args: { author: string; viewer: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

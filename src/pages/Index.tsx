@@ -99,24 +99,8 @@ const testimonials = [
 ];
 
 export default function Index() {
-  const { t, isAuthenticated, language } = useApp();
+  const { t, language } = useApp();
   const { user } = useAuth();
-  const [weatherData, setWeatherData] = useState<any>(null);
-  const [userCity, setUserCity] = useState('Pune');
-
-  useEffect(() => {
-    const fetchWeather = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('get-weather', {
-          body: { city: userCity, language },
-        });
-        if (!error && data) setWeatherData(data);
-      } catch (err) {
-        console.error('Weather fetch error:', err);
-      }
-    };
-    fetchWeather();
-  }, [userCity, language]);
 
   return (
     <Layout>
@@ -130,7 +114,7 @@ export default function Index() {
           <div className="absolute top-20 left-10 w-72 h-72 bg-secondary/20 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-10 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse delay-1000" />
         </div>
-        
+
         <div className="container mx-auto px-4 relative">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="text-primary-foreground">
@@ -138,18 +122,18 @@ export default function Index() {
                 <Leaf className="h-5 w-5 text-secondary" />
                 <span className="text-sm font-medium">Smart Farming for Indian Farmers</span>
               </div>
-              
+
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                {language === 'hi' ? 'अपनी खेती को स्मार्ट बनाएं' : 
+                {language === 'hi' ? 'अपनी खेती को स्मार्ट बनाएं' :
                  language === 'mr' ? 'तुमची शेती स्मार्ट करा' :
                  'Plan Crops, Analyze Soil, Increase Yield'}
               </h1>
               <p className="text-lg md:text-xl opacity-90 mb-8 max-w-lg">
-                {language === 'hi' ? 'AI-संचालित मिट्टी विश्लेषण, फसल सिफारिशें और स्मार्ट कैलेंडर के साथ बेहतर उपज प्राप्त करें।' : 
+                {language === 'hi' ? 'AI-संचालित मिट्टी विश्लेषण, फसल सिफारिशें और स्मार्ट कैलेंडर के साथ बेहतर उपज प्राप्त करें।' :
                  language === 'mr' ? 'AI-संचालित माती विश्लेषण, पीक शिफारसी आणि स्मार्ट कॅलेंडरसह चांगले उत्पादन मिळवा.' :
                  'Get AI-powered soil analysis, personalized crop recommendations, and smart farming calendar to maximize your harvest.'}
               </p>
-              
+
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button asChild size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-lg shadow-secondary/30 text-base px-8">
                   <Link to="/soil-report">
@@ -164,52 +148,8 @@ export default function Index() {
                   </Link>
                 </Button>
               </div>
-
-              {/* Weather Widget */}
-              <div className="mt-10">
-                <div className="text-xs opacity-70 mb-2 flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {weatherData 
-                    ? `${language === 'hi' ? 'मौसम' : language === 'mr' ? 'हवामान' : 'Weather'} — ${weatherData.city}, ${weatherData.state}`
-                    : (language === 'hi' ? 'मौसम लोड हो रहा है...' : language === 'mr' ? 'हवामान लोड होत आहे...' : 'Loading weather...')}
-                </div>
-                {weatherData ? (
-                  <div className="flex flex-wrap gap-6">
-                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
-                      <Sun className="h-5 w-5 text-amber-400" />
-                      <div>
-                        <div className="text-xs opacity-70">{weatherData.current?.description || 'Weather'}</div>
-                        <div className="font-semibold">{Math.round(weatherData.current?.temperature || 0)}°C</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
-                      <CloudRain className="h-5 w-5 text-sky-400" />
-                      <div>
-                        <div className="text-xs opacity-70">{language === 'hi' ? 'साप्ताहिक वर्षा' : language === 'mr' ? 'साप्ताहिक पाऊस' : 'Weekly Rain'}</div>
-                        <div className="font-semibold">{Math.round(weatherData.totalWeeklyRainfall || 0)}mm</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
-                      <Thermometer className="h-5 w-5 text-emerald-400" />
-                      <div>
-                        <div className="text-xs opacity-70">{language === 'hi' ? 'आर्द्रता' : language === 'mr' ? 'आर्द्रता' : 'Humidity'}</div>
-                        <div className="font-semibold">{weatherData.current?.humidity || 0}%</div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-6">
-                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg animate-pulse">
-                      <div className="h-5 w-5 rounded bg-white/20" />
-                      <div className="space-y-1">
-                        <div className="h-3 w-12 rounded bg-white/20" />
-                        <div className="h-4 w-8 rounded bg-white/20" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
+
 
             <div className="hidden lg:block relative">
               <div className="relative z-10">

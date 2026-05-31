@@ -21,6 +21,7 @@ export default function Signup() {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     location: '',
@@ -36,41 +37,38 @@ export default function Signup() {
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.username || !formData.email || !formData.password) {
+    if (!formData.username || !formData.email || !formData.password || !formData.phone) {
       toast.error('Please fill in all required fields');
       return;
     }
-    
+    if (!/^\+?[\d\s-]{7,15}$/.test(formData.phone)) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
     }
-    
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
-    
     setStep(2);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     setIsLoading(true);
-    
-    const { error } = await signUp(formData.email, formData.password, formData.username);
-    
+    const { error } = await signUp(formData.email, formData.password, formData.username, formData.phone);
     if (error) {
       toast.error(error.message || 'Failed to create account');
     } else {
       toast.success('Account created successfully! You can now sign in.');
       navigate('/dashboard');
     }
-    
     setIsLoading(false);
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
@@ -126,6 +124,20 @@ export default function Signup() {
                   className="input-field"
                 />
               </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => handleChange('phone', e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="input-field"
+                />
+              </div>
+
 
               {/* Password */}
               <div className="space-y-2">

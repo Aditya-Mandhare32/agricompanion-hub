@@ -19,7 +19,10 @@ import Community from "./pages/Community";
 import Messages from "./pages/Messages";
 import News from "./pages/News";
 import SavedNews from "./pages/SavedNews";
+import Admin from "./pages/Admin";
+import { ProtectedAdminRoute } from "./components/ProtectedAdminRoute";
 import NotFound from "./pages/NotFound";
+
 
 const queryClient = new QueryClient();
 
@@ -52,6 +55,8 @@ const App = () => (
               <Route path="/messages" element={<Messages />} />
               <Route path="/news" element={<News />} />
               <Route path="/saved-news" element={<SavedNews />} />
+              <Route path="/admin" element={<ProtectedAdminRoute><Admin /></ProtectedAdminRoute>} />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

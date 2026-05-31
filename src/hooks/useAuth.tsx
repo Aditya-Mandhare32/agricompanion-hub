@@ -11,6 +11,8 @@ interface Profile {
   land_owned: string | null;
   account_type: string;
   language: string;
+  phone?: string | null;
+  is_admin?: boolean;
 }
 
 interface AuthContextType {
@@ -18,7 +20,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, username: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, username: string, phone?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<Profile>) => Promise<void>;
@@ -33,37 +35,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
       if (session?.user) {
-        // Fetch profile
         setTimeout(async () => {
-          const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-          setProfile(data);
+          const { data } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).maybeSingle();
+          setProfile(data as Profile | null);
         }, 0);
       } else {
         setProfile(null);
       }
     });
 
-    // Then check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle()
-          .then(({ data }) => setProfile(data));
+        supabase.from('profiles').select('*').eq('user_id', session.user.id).maybeSingle()
+          .then(({ data }) => setProfile(data as Profile | null));
       }
       setLoading(false);
     });
@@ -71,14 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, username: string) => {
+  const signUp = async (email: string, password: string, username: string, phone?: string) => {
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email, password,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { username }
-      }
+        data: { username, phone: phone || null },
+      },
     });
     return { error };
   };
@@ -90,35 +79,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
+    setUser(null); setSession(null); setProfile(null);
   };
 
   const updateProfile = async (data: Partial<Profile>) => {
     if (!user) return;
-    
-    const { error } = await supabase
-      .from('profiles')
-      .update(data)
-      .eq('user_id', user.id);
-    
-    if (!error && profile) {
-      setProfile({ ...profile, ...data });
-    }
+    const { error } = await supabase.from('profiles').update(data).eq('user_id', user.id);
+    if (!error && profile) setProfile({ ...profile, ...data });
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      profile,
-      loading,
-      signUp,
-      signIn,
-      signOut,
-      updateProfile,
-    }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signUp, signIn, signOut, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
@@ -126,8 +97,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

@@ -1,92 +1,110 @@
-# Plan: Dynamic Notifications + Calendar Cleanup
+Plan: Notification Filters + Geo Weather + Admin System
 
-## 1. Remove "Add Crop Cycle" Button
-- Locate the button in `src/pages/CalendarPage.tsx` (or related calendar components) and remove it. Keep "Add Other" intact.
-
-## 2. Notifications Table
-The project already has a `smart_notifications` table that closely matches the requested schema (id, user_id, title, message, type, read, created_at, priority, action_type, action_data, expires_at, dismissed). Rather than creating a duplicate `notifications` table, **reuse `smart_notifications`** — it already has RLS, realtime is straightforward, and the existing `SmartNotifications` UI uses it.
-
-(A separate, older `notifications` table also exists but isn't wired to the UI. We'll consolidate on `smart_notifications`.)
-
-Add cleanup trigger: after insert, keep only the 20 most recent rows per user (delete older).
-
-## 3. Auto-Insert Notification Logic
-Extend the existing `generate-smart-notifications` edge function (and the client-side `SmartNotifications` generator) to cover the new triggers:
-
-**Calendar-based** (run on app load + scheduled cron at 6 AM):
-- Today's tasks → one "Tasks Today" notification listing today's `calendar_events`
-- Overdue: `event_date < today AND completed = false` → "Overdue Tasks"
-- 1-day-away events → "Upcoming Activity"
-- Crops with `expected_harvest_date` within 7 days → "Harvest Coming"
-- On crop insert (in `useCrops` after generating schedule) → "Crop Schedule Generated"
-
-**Crop health / soil** (client-triggered where data is produced):
-- On crop health score change in `CropHealthPopup`/`useCrops`: compare to previous → "Crop Health Drop"
-- After AI pest photo analysis returns high/critical → "Pest Alert"
-- After `analyze-soil` finishes → "Soil Report Ready" with key findings
-
-**Weather** (in `get-weather` consumer / WeatherWidget):
-- Rain > 20mm, temp > 40 or < 5 → "Weather Warning"
-- Forecast conflict with same-day spray/fertilizer event → "Activity Conflict"
-
-**Market** (in `MarketPrices` / `get-market-prices`):
-- Add optional `target_price` per crop (stored in `crop_history.notes` JSON or new column) — for now, trigger when current price ≥ user-set target stored locally → "Market Price Alert"
-
-**Community**:
-- Realtime listener on `post_comments` where parent post's `user_id = me` → "Community Reply"
-- Realtime listener on new `posts` from same district (match `profiles.location`) containing pest/disease keywords → "Nearby Farmer Alert"
-
-**Government** — skipped (no schemes data source in project). Will leave a placeholder code path commented for later.
-
-**Weekly summary** (Sunday 8 PM cron): aggregate completed/pending counts + avg health → "Weekly Farm Summary".
-
-## 4. Cron Jobs (pg_cron + pg_net)
-Enable `pg_cron` and `pg_net`. Schedule:
-- `0 6 * * *` daily → invoke `generate-smart-notifications` with `{ mode: 'daily' }`
-- `0 20 * * 0` Sunday → invoke with `{ mode: 'weekly' }`
-- `*/30 * * * *` half-hourly → check overdue/upcoming/harvest
-
-The function branches on `mode`.
-
-## 5. Realtime Bell Icon
-Update `src/components/layout/Header.tsx` to subscribe to `smart_notifications` inserts for `user_id = me`, show unread count badge (red), list latest 20, add "Mark all read" button, click → mark read + navigate via `action_type`.
-
-(The existing `AppContext` notifications array is local/mock — repoint it to `smart_notifications` so Header + dashboard `SmartNotifications` panel share one source of truth.)
-
-## 6. Icon Mapping
-Add to Header dropdown + `SmartNotifications`:
-- Calendar blue: `task_today`, `upcoming_activity`, `overdue`, `harvest_coming`, `schedule_generated`
-- Warning yellow: `pest_alert`, `weather_warning`, `activity_conflict`, `health_drop`
-- Green: `soil_ready`, `market_price`, `weekly_summary`
-- Person: `community_reply`, `nearby_farmer`
-- Government: `gov_scheme`
-
-## 7. Local Push Notifications
-For each new in-app `smart_notifications` insert received via realtime, also fire a local browser notification via existing `showLocalNotification` from `src/lib/pushNotifications.ts` (already implemented). This piggybacks on the PWA work from prior turns — works in installed/standalone, no-ops in iframe.
-
-## 8. Auto-Trim to 20
-Postgres trigger after insert on `smart_notifications`: delete rows beyond rank 20 per user.
+This is a large build. I'll deliver it in 3 parts. Confirm the scope (especially Part 3) before I begin.
 
 ---
 
-## Technical details
+## Part 1 — Notification History filters (small, frontend only)
 
-### Migration
-- Enable extensions, add trigger function `trim_smart_notifications_per_user()`, schedule cron jobs.
-- (No new table — reuse `smart_notifications`.)
+In `NotificationHistory.tsx` (Profile/Settings):
 
-### Files to edit
-- `src/pages/CalendarPage.tsx` — remove Add Crop Cycle button
-- `src/components/layout/Header.tsx` — wire bell to `smart_notifications` + realtime + Mark all read
-- `src/context/AppContext.tsx` — replace local notifications with Supabase-backed
-- `src/components/notifications/SmartNotifications.tsx` — add new types + icons
-- `src/hooks/useCrops.ts` — emit Crop Schedule Generated + health drop
-- `src/components/soil/AIAnalysisSection.tsx` — emit Soil Report Ready
-- `src/components/weather/WeatherWidget.tsx` — emit Weather Warning + Activity Conflict
-- `src/components/dashboard/MarketPrices.tsx` — emit Market Price Alert (target stored in localStorage per crop)
-- `supabase/functions/generate-smart-notifications/index.ts` — extend with daily/weekly modes + all calendar branches
-- New: realtime listeners for `post_comments` and `posts` in `AppContext` to emit Community Reply & Nearby Farmer Alert
+- Add two filter rows above the list:
+  - **Read state**: All / Unread / Read (segmented buttons)
+  - **Type**: All / Calendar / Weather / Pest / Soil / Market / Community / Other (chips, multi-select)
+- Filters apply client-side over the already-loaded last-50 notifications.
+- Localised labels (en/hi/mr).
+- Empty state when filters match nothing.
 
-### Out of scope (will note in response)
-- Government scheme notifications (no data source)
-- Per-crop market target price UI — minimal localStorage version only
+---
+
+## Part 2 — Geolocation-based weather on dashboard
+
+- **Landing page (`Index.tsx`)**: remove the `WeatherWidget` (and any weather hero text) so logged-out visitors don't see it.
+- **Dashboard (`Dashboard.tsx` / `WeatherWidget.tsx`)**:
+  - On first mount after login, call `navigator.geolocation.getCurrentPosition`.
+  - If granted → use lat/lon for Open-Meteo + OpenWeatherMap calls.
+  - If denied/unsupported → fall back to profile `location` (current behaviour).
+  - Cache permission state + last coords in `localStorage` so we don't re-prompt every visit.
+  - Show a small inline banner if denied: "Enable location for accurate local weather" with a retry button.
+
+---
+
+## Part 3 — Admin system + community moderation (large)
+
+### 3a. Database (one migration)
+
+New tables, all with GRANTs + RLS:
+
+- `post_reports` (id, reporter_id, reported_post_id, reported_user_id, reason, status [pending|resolved|dismissed], admin_action, created_at, resolved_at)
+- `blocked_users` (id, blocker_id, blocked_user_id, blocked_by_admin bool, reason, created_at) — unique(blocker_id, blocked_user_id)
+- `user_status` (user_id PK, status [active|warned|restricted|blocked], reason, restricted_until, updated_by_admin, updated_at)
+- `admin_notifications` (id, sent_by, sent_to nullable, target_group nullable, title, message, created_at) — broadcast history
+- `admin_activity_logs` (id, admin_id, action_type, target_user_id, target_user_email, reason, metadata jsonb, created_at)
+
+Profile change:
+
+- Add `profiles.is_admin boolean default false`
+- Set `is_admin = true` where email = `adityamandhare28@gmail.com` (joined via `auth.users`).
+
+Helpers:
+
+- `public.is_admin(uid uuid)` SECURITY DEFINER function (avoids RLS recursion) — used by every admin-only policy.
+- `public.is_user_blocked_by(viewer uuid, author uuid)` SECURITY DEFINER — used to hide posts in feed.
+
+RLS highlights:
+
+- `post_reports`, `user_status`, `admin_notifications`, `admin_activity_logs`: SELECT/INSERT/UPDATE/DELETE restricted to `is_admin(auth.uid())`. Exception: any authenticated user can INSERT into `post_reports` as the reporter; can SELECT their own broadcast notifications via `sent_to`.
+- `blocked_users`: user manages their own rows (blocker_id = auth.uid()); admins see/manage all.
+- `posts` INSERT policy tightened: only allowed if `user_status.status` is not `blocked` and (restricted_until is null OR < now()).
+- `posts` SELECT policy adds: hide rows where the author is in the viewer's `blocked_users` OR globally blocked.
+
+### 3b. Email pipeline
+
+Use Lovable Emails (the project's existing email service). I'll:
+
+1. Check email-domain status; if no domain configured, surface the setup dialog.
+2. Once a domain exists, scaffold a transactional template `agri360-account-notice` with vars `{action, reason, restricted_until, support_email}`.
+3. Create an edge function `send-admin-email` (service-role) that admin actions call.
+
+If you'd rather skip email for now and just create in-app `smart_notifications` for the user, say so — I can swap email for an in-app alert and ship faster.
+
+### 3c. Frontend — moderation on posts
+
+- `PostMenu` component (3-dot) added to every post card in `CommunityFeed`, `MyPosts`, `SavedPosts`:
+  - Own post → Edit / Delete
+  - Other → Report (reason dialog), Block User, Restrict User (admin only)
+- After blocking, local feed filters that author immediately.
+- Report dialog: 4 preset reasons → inserts into `post_reports`, toast confirmation.
+- Block toast: "You will no longer see posts from this user."
+
+### 3d. Frontend — `/admin` route
+
+- `<AdminRoute>` guard (checks `profile.is_admin`, else redirects to `/dashboard`).
+- "Admin Panel" link added to header profile dropdown (admin-only).
+- `Admin.tsx` shell with left sidebar / tabs for 9 sections:
+  1. Overview stats (cards, computed via parallel `select count` queries)
+  2. Reported Posts (table + action buttons; each action writes activity log + sends email + updates `post_reports.status`)
+  3. User Management (search, filter, sort; detail drawer with posts/crops/soil/activity)
+  4. All Posts (filters: All/Reported/Today/Flagged/Has Media; delete w/ confirm)
+  5. Broadcast Notifications (compose + send-to-all / single-email / status-group; history table)
+  6. Blocked / Restricted (two tabs, unblock/unrestrict buttons)
+  7. Activity Logs (filter by action type + date range)
+  8. App Analytics (DAU 30d, new regs/week — computed from `auth.users.created_at`; needs `service_role` edge function since `auth.users` isn't directly queryable from RLS — I'll add `get-admin-analytics` function)
+  9. Moderation Queue (posts with >1 report, media posts; quick approve/remove)
+
+All tables: shadcn `Table`, status badges, search inputs, confirm dialogs (`AlertDialog`) before destructive actions.
+
+### 3e. Activity logging
+
+Every admin mutation writes one row to `admin_activity_logs` with `action_type`, `target_user_id`, `target_user_email`, `reason`.
+
+---
+
+## Open questions before I start
+
+1. **Email vs in-app for admin actions** — set up Lovable Emails domain now (requires you to complete a DNS setup dialog), or use in-app `smart_notifications` for v1 and add email later?
+2. **Restrict User from post menu (non-admin path)** — your spec says "Restrict User: Only visible to admin account". Confirming: regular users never see Restrict; admins see it on every other-user post. Correct?
+3. **Phone number** — User Management table lists a `Phone` column, but `profiles` has no phone field. OK to leave blank, or add `phone` to profiles? Ask phone number while login/signup time to use
+4. **Last Active** — there's no presence tracking today. OK to show "—" or derive from latest post/comment timestamp? Yes leave it empty
+
+Once you answer those (especially #1), I'll execute Parts 1, 2, 3a, 3c, 3d, 3e in one pass, with the email function stub ready to enable.

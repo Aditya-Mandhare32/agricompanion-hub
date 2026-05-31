@@ -7,7 +7,8 @@ import { showLocalNotification } from '@/lib/pushNotifications';
 import {
   Menu, Bell, User, LogOut, Globe, Leaf, FileText, Calendar as CalendarIcon,
   Users, Newspaper, MessageCircle, BarChart3, AlertTriangle, Sprout, Bug,
-  CloudRain, Landmark, CheckCircle2, TrendingUp, Wheat, BellOff,
+  CloudRain, Landmark, CheckCircle2, TrendingUp, Wheat, BellOff, ShieldAlert,
+
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -265,8 +266,16 @@ export function Header() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild><Link to="/profile" className="flex items-center gap-2"><User className="h-4 w-4" />{t('profile')}</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild><Link to="/messages" className="flex items-center gap-2"><MessageCircle className="h-4 w-4" />Messages</Link></DropdownMenuItem>
+                  {profile?.is_admin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="flex items-center gap-2 text-primary font-medium">
+                        <ShieldAlert className="h-4 w-4" />Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()} className="text-destructive"><LogOut className="h-4 w-4 mr-2" />{t('logout')}</DropdownMenuItem>
+
                 </DropdownMenuContent>
               </DropdownMenu>
             </>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,20 @@ interface Row {
   read: boolean; dismissed: boolean; created_at: string;
 }
 
+type ReadFilter = 'all' | 'unread' | 'read';
+type CategoryKey = 'all' | 'calendar' | 'weather' | 'pest' | 'soil' | 'market' | 'community' | 'other';
+
+const CATEGORY_TYPES: Record<CategoryKey, string[]> = {
+  all: [],
+  calendar: ['task_today', 'upcoming_activity', 'overdue', 'harvest_coming', 'schedule_generated', 'task_reminder'],
+  weather: ['weather_warning', 'weather_alert', 'activity_conflict'],
+  pest: ['pest_alert', 'health_drop', 'crop_risk'],
+  soil: ['soil_ready', 'nutrient_alert'],
+  market: ['market_price'],
+  community: ['community_reply', 'nearby_farmer', 'message_alert'],
+  other: [],
+};
+
 export function NotificationHistory() {
   const { user } = useAuth();
   const { language } = useApp();
@@ -24,6 +38,8 @@ export function NotificationHistory() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Row | null>(null);
+  const [readFilter, setReadFilter] = useState<ReadFilter>('all');
+  const [category, setCategory] = useState<CategoryKey>('all');
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -39,6 +55,22 @@ export function NotificationHistory() {
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    let out = rows;
+    if (readFilter === 'unread') out = out.filter(r => !r.read);
+    else if (readFilter === 'read') out = out.filter(r => r.read);
+    if (category !== 'all') {
+      if (category === 'other') {
+        const known = new Set(Object.values(CATEGORY_TYPES).flat());
+        out = out.filter(r => !known.has(r.type));
+      } else {
+        const allowed = new Set(CATEGORY_TYPES[category]);
+        out = out.filter(r => allowed.has(r.type));
+      }
+    }
+    return out;
+  }, [rows, readFilter, category]);
 
   const clearAll = async () => {
     if (!user) return;
@@ -65,13 +97,29 @@ export function NotificationHistory() {
   const headerLabel = language === 'hi' ? 'सूचना इतिहास' : language === 'mr' ? 'सूचना इतिहास' : 'Notification History';
   const clearLabel = language === 'hi' ? 'सभी हटाएं' : language === 'mr' ? 'सर्व काढा' : 'Clear all';
 
+  const readLabels: Record<ReadFilter, string> = {
+    all: language === 'hi' ? 'सभी' : language === 'mr' ? 'सर्व' : 'All',
+    unread: language === 'hi' ? 'अनपढ़ी' : language === 'mr' ? 'न वाचलेल्या' : 'Unread',
+    read: language === 'hi' ? 'पढ़ी' : language === 'mr' ? 'वाचलेल्या' : 'Read',
+  };
+  const catLabels: Record<CategoryKey, string> = {
+    all: language === 'hi' ? 'सभी' : language === 'mr' ? 'सर्व' : 'All',
+    calendar: language === 'hi' ? 'कैलेंडर' : language === 'mr' ? 'कॅलेंडर' : 'Calendar',
+    weather: language === 'hi' ? 'मौसम' : language === 'mr' ? 'हवामान' : 'Weather',
+    pest: language === 'hi' ? 'कीट' : language === 'mr' ? 'कीड' : 'Pest',
+    soil: language === 'hi' ? 'मिट्टी' : language === 'mr' ? 'माती' : 'Soil',
+    market: language === 'hi' ? 'बाज़ार' : language === 'mr' ? 'बाजार' : 'Market',
+    community: language === 'hi' ? 'समुदाय' : language === 'mr' ? 'समुदाय' : 'Community',
+    other: language === 'hi' ? 'अन्य' : language === 'mr' ? 'इतर' : 'Other',
+  };
+
   return (
     <div className="space-y-3 pt-4 border-t">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <History className="h-4 w-4 text-primary" />
           <span className="font-medium">{headerLabel}</span>
-          {rows.length > 0 && <Badge variant="secondary">{rows.length}</Badge>}
+          {filtered.length > 0 && <Badge variant="secondary">{filtered.length}</Badge>}
         </div>
         {rows.length > 0 && (
           <Button variant="ghost" size="sm" onClick={clearAll} className="text-destructive hover:text-destructive">
@@ -80,18 +128,38 @@ export function NotificationHistory() {
         )}
       </div>
 
+      {/* Filters */}
+      <div className="space-y-2">
+        <div className="flex gap-1 flex-wrap">
+          {(['all', 'unread', 'read'] as ReadFilter[]).map((k) => (
+            <Button key={k} size="sm" variant={readFilter === k ? 'default' : 'outline'}
+              onClick={() => setReadFilter(k)} className="h-7 text-xs">
+              {readLabels[k]}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {(['all', 'calendar', 'weather', 'pest', 'soil', 'market', 'community', 'other'] as CategoryKey[]).map((k) => (
+            <Button key={k} size="sm" variant={category === k ? 'secondary' : 'ghost'}
+              onClick={() => setCategory(k)} className="h-7 text-xs">
+              {catLabels[k]}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-      ) : rows.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
           <BellOff className="h-8 w-8 mb-2 opacity-40" />
           <span className="text-sm">
-            {language === 'hi' ? 'कोई पिछली सूचना नहीं' : language === 'mr' ? 'कोणतीही जुनी सूचना नाही' : 'No past notifications'}
+            {language === 'hi' ? 'कोई सूचना नहीं मिली' : language === 'mr' ? 'कोणतीही सूचना सापडली नाही' : 'No notifications match these filters'}
           </span>
         </div>
       ) : (
         <div className="max-h-96 overflow-y-auto rounded-md border divide-y">
-          {rows.map((n) => {
+          {filtered.map((n) => {
             const tr = translateNotification(n as NotifLike, language);
             return (
               <button

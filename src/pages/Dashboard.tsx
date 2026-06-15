@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SmartNotifications } from '@/components/notifications/SmartNotifications';
 import { MarketPrices } from '@/components/dashboard/MarketPrices';
+import { InstallPrompt } from '@/components/InstallPrompt';
 import { useBackfillCropEvents } from '@/hooks/useBackfillCropEvents';
 import { isPushSupported, getPermission, requestPushPermission } from '@/lib/pushNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -311,6 +312,7 @@ export default function Dashboard() {
   return (
     <Layout>
       <motion.div initial="hidden" animate="visible" variants={stagger} className="container mx-auto px-4 py-6 space-y-6 max-w-7xl">
+        <InstallPrompt />
         {/* Dynamic Weather Hero Section */}
         <motion.section variants={fadeIn} className="rounded-2xl overflow-hidden relative min-h-[280px]">
           {/* Dynamic background image based on weather */}

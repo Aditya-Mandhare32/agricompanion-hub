@@ -4,6 +4,8 @@ import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { PostMenu } from '@/components/community/PostMenu';
+import { useBlockedUsers } from '@/hooks/useBlockedUsers';
 import { Heart, MessageCircle, Bookmark, Loader2, BookmarkX, Play } from 'lucide-react';
 
 const isVideoUrl = (url: string) => /\.(mp4|webm|mov|avi|m4v|ogg)(\?|$)/i.test(url);
@@ -37,9 +39,11 @@ interface SavedPostsProps {
 export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
   const { user } = useAuth();
   const { language } = useApp();
+  const { blocked, addLocal: addLocalBlock } = useBlockedUsers();
   const [posts, setPosts] = useState<SavedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<SavedPost | null>(null);
+  const visiblePosts = posts.filter(p => !blocked.has(p.user_id));
 
   useEffect(() => {
     if (user) fetchSavedPosts();
@@ -109,7 +113,7 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
   return (
     <>
       <div className="grid grid-cols-3 gap-1">
-        {posts.map((post) => (
+        {visiblePosts.map((post) => (
           <div key={post.id} className="relative group cursor-pointer" onClick={() => setSelectedPost(post)}>
             <AspectRatio ratio={1}>
               {post.image_url ? (
@@ -148,10 +152,16 @@ export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
                     <AvatarImage src={selectedPost.profile?.avatar_url} />
                     <AvatarFallback>{selectedPost.profile?.username?.[0]?.toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  <div>
+                  <div className="flex-1">
                     <DialogTitle className="text-sm">{selectedPost.profile?.username}</DialogTitle>
                     <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(selectedPost.created_at), { addSuffix: true })}</p>
                   </div>
+                  <PostMenu
+                    postId={selectedPost.id}
+                    postUserId={selectedPost.user_id}
+                    postUserEmail={selectedPost.profile?.username || null}
+                    onUserBlocked={(uid) => { addLocalBlock(uid); setSelectedPost(null); }}
+                  />
                 </div>
               </DialogHeader>
               {selectedPost.image_url && (

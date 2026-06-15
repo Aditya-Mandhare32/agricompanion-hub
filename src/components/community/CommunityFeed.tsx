@@ -10,19 +10,18 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import {
-  Heart, MessageCircle, Bookmark, Share2, MoreHorizontal,
-  Image as ImageIcon, Send, Loader2, Trash2, Users,
-  HelpCircle, Filter, Search, X, ChevronDown, ChevronUp, MapPin,
-  Plus, Video, UserCircle, Download
+  Heart, MessageCircle, Bookmark, Share2,
+  Image as ImageIcon, Send, Loader2, Users,
+  HelpCircle, Search, X, ChevronDown, ChevronUp, MapPin,
+  Plus, Video, ShieldAlert
 } from 'lucide-react';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuTrigger, DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { PostMenu } from '@/components/community/PostMenu';
+import { useBlockedUsers, useUserRestriction } from '@/hooks/useBlockedUsers';
+import { format } from 'date-fns';
 
 interface PostProfile {
   username: string;
@@ -60,6 +59,8 @@ export function CommunityFeed({ onNavigateToMessages }: CommunityFeedProps) {
   const { user, profile } = useAuth();
   const { language } = useApp();
   const navigate = useNavigate();
+  const { blocked, addLocal: addLocalBlock } = useBlockedUsers();
+  const restriction = useUserRestriction();
   const postFormRef = useRef<HTMLDivElement>(null);
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -196,6 +197,14 @@ export function CommunityFeed({ onNavigateToMessages }: CommunityFeedProps) {
 
   const createPost = async () => {
     if (!newPost.trim() || !user || !profile) return;
+    if (restriction.kind === 'blocked') {
+      toast.error('Your account has been blocked. Contact adityamandhare28@gmail.com');
+      return;
+    }
+    if (restriction.kind === 'restricted') {
+      toast.error(`You are restricted from posting until ${restriction.until ? format(new Date(restriction.until), 'dd MMM yyyy') : 'further notice'}.`);
+      return;
+    }
     setIsPosting(true);
     let mediaUrl: string | null = null;
     if (selectedMedia) {
@@ -206,7 +215,12 @@ export function CommunityFeed({ onNavigateToMessages }: CommunityFeedProps) {
     }
     const content = isAskingQuestion ? `❓ ${newPost.trim()}` : newPost.trim();
     const { error } = await supabase.from('posts').insert({ user_id: user.id, content, image_url: mediaUrl });
-    if (error) { toast.error('Failed to create post'); }
+    if (error) {
+      const msg = error.message?.includes('row-level') || error.message?.includes('policy')
+        ? 'Your account has been blocked. Contact adityamandhare28@gmail.com'
+        : 'Failed to create post';
+      toast.error(msg);
+    }
     else { setNewPost(''); setIsAskingQuestion(false); setSelectedMedia(null); setMediaPreview(null); toast.success(isAskingQuestion ? 'Question posted!' : 'Post created!'); }
     setIsPosting(false);
   };
@@ -268,6 +282,7 @@ export function CommunityFeed({ onNavigateToMessages }: CommunityFeedProps) {
   const isVideoUrl = (url: string) => /\.(mp4|webm|mov|avi)$/i.test(url);
 
   const filteredPosts = posts.filter(post => {
+    if (blocked.has(post.user_id)) return false;
     if (searchQuery && !post.content.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (feedFilter === 'questions' && !post.content.startsWith('❓')) return false;
     return true;
@@ -279,6 +294,16 @@ export function CommunityFeed({ onNavigateToMessages }: CommunityFeedProps) {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 relative">
+      {restriction.kind !== 'ok' && (
+        <Card className="border-destructive/40 bg-destructive/5 p-3 flex items-center gap-3">
+          <ShieldAlert className="h-5 w-5 text-destructive shrink-0" />
+          <div className="text-sm">
+            {restriction.kind === 'blocked'
+              ? <>Your account has been blocked. Contact <a className="underline" href="mailto:adityamandhare28@gmail.com">adityamandhare28@gmail.com</a></>
+              : <>You are restricted from posting{restriction.until ? ` until ${format(new Date(restriction.until), 'dd MMM yyyy')}` : ''}. {restriction.reason && <span className="text-muted-foreground">— {restriction.reason}</span>}</>}
+          </div>
+        </Card>
+      )}
       {/* Search */}
       <Card className="p-4">
         <div className="flex gap-2 mb-3">
@@ -370,47 +395,29 @@ export function CommunityFeed({ onNavigateToMessages }: CommunityFeedProps) {
         {filteredPosts.map((post) => (
           <Card key={post.id} className="overflow-hidden">
             <CardHeader className="flex-row items-start gap-3 p-4">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={post.profile?.avatar_url} />
-                <AvatarFallback>{post.profile?.username?.[0]?.toUpperCase()}</AvatarFallback>
-              </Avatar>
+              <button onClick={() => navigate(`/farmer/${post.user_id}`)} className="shrink-0">
+                <Avatar className="h-10 w-10 hover:ring-2 hover:ring-primary/40 transition">
+                  <AvatarImage src={post.profile?.avatar_url} />
+                  <AvatarFallback>{post.profile?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </button>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm">{post.profile?.username}</span>
+                  <button onClick={() => navigate(`/farmer/${post.user_id}`)} className="font-semibold text-sm hover:underline truncate">
+                    {post.profile?.username}
+                  </button>
                   <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
                   {post.content.startsWith('❓') && <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">Question</Badge>}
                 </div>
                 {post.profile?.location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{post.profile.location}</p>}
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {post.user_id === user?.id && (
-                    <><DropdownMenuItem onClick={() => deletePost(post.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem><DropdownMenuSeparator /></>
-                  )}
-                  {post.user_id !== user?.id && (
-                    <>
-                      <DropdownMenuItem onClick={() => startMessage(post.user_id)}><MessageCircle className="h-4 w-4 mr-2" />Message</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate(`/profile?user=${post.user_id}`)}><UserCircle className="h-4 w-4 mr-2" />Profile</DropdownMenuItem>
-                    </>
-                  )}
-                  {post.image_url && (
-                    <DropdownMenuItem onClick={async () => {
-                      try {
-                        const resp = await fetch(post.image_url!);
-                        const blob = await resp.blob();
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `agri360-post-${post.id}.${post.image_url!.split('.').pop()?.split('?')[0] || 'jpg'}`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                        toast.success('Download started!');
-                      } catch { toast.error('Download failed'); }
-                    }}><Download className="h-4 w-4 mr-2" />Download</DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <PostMenu
+                postId={post.id}
+                postUserId={post.user_id}
+                postUserEmail={post.profile?.username || null}
+                onDelete={() => deletePost(post.id)}
+                onUserBlocked={(uid) => addLocalBlock(uid)}
+              />
             </CardHeader>
             <CardContent className="px-4 pb-3">
               <p className="text-sm whitespace-pre-wrap">{post.content}</p>

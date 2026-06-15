@@ -21,6 +21,7 @@ import News from "./pages/News";
 import SavedNews from "./pages/SavedNews";
 import Admin from "./pages/Admin";
 import { ProtectedAdminRoute } from "./components/ProtectedAdminRoute";
+import FarmerProfile from "./pages/FarmerProfile";
 import NotFound from "./pages/NotFound";
 
 
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/news" element={<News />} />
               <Route path="/saved-news" element={<SavedNews />} />
               <Route path="/admin" element={<ProtectedAdminRoute><Admin /></ProtectedAdminRoute>} />
+              <Route path="/farmer/:userId" element={<ProtectedRoute><FarmerProfile /></ProtectedRoute>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

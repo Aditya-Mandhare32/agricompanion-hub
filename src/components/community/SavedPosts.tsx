@@ -4,6 +4,8 @@ import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { PostMenu } from '@/components/community/PostMenu';
+import { useBlockedUsers } from '@/hooks/useBlockedUsers';
 import { Heart, MessageCircle, Bookmark, Loader2, BookmarkX, Play } from 'lucide-react';
 
 const isVideoUrl = (url: string) => /\.(mp4|webm|mov|avi|m4v|ogg)(\?|$)/i.test(url);

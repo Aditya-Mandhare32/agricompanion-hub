@@ -39,9 +39,11 @@ interface SavedPostsProps {
 export function SavedPosts({ onNavigateToMessages }: SavedPostsProps) {
   const { user } = useAuth();
   const { language } = useApp();
+  const { blocked, addLocal: addLocalBlock } = useBlockedUsers();
   const [posts, setPosts] = useState<SavedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<SavedPost | null>(null);
+  const visiblePosts = posts.filter(p => !blocked.has(p.user_id));
 
   useEffect(() => {
     if (user) fetchSavedPosts();

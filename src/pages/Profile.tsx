@@ -423,6 +423,10 @@ export default function Profile() {
                 </div>
               </CardContent>
             </Card>
+
+            <div className="mt-6 max-w-2xl mx-auto">
+              <FarmLocationSection language={language} />
+            </div>
           </TabsContent>
 
           {/* Saved Tab */}

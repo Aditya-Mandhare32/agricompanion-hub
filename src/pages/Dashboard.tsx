@@ -579,9 +579,33 @@ export default function Dashboard() {
               <motion.div variants={fadeIn}><SmartNotifications /></motion.div>
               <motion.div variants={fadeIn}><MarketPrices /></motion.div>
             </div>
+
+            {/* Crop History — completed seasons */}
+            <CropHistorySection language={language} />
           </>
         )}
       </motion.div>
+
+      {/* Completion celebration modal */}
+      <CropCompletionModal
+        open={showCompletionModal}
+        onOpenChange={setShowCompletionModal}
+        cropName={harvestingCrop?.crop_name || ''}
+        totalDays={harvestingCrop?.sowing_date ? differenceInDays(new Date(), new Date(harvestingCrop.sowing_date)) : 0}
+        language={language}
+        onRecordYield={() => { setShowCompletionModal(false); setShowYieldDialog(true); }}
+        onAddSameCrop={handleAddSameCrop}
+        onMoveToHistory={handleMoveToHistory}
+      />
+
+      {/* Yield recording form */}
+      <RecordYieldDialog
+        open={showYieldDialog}
+        onOpenChange={setShowYieldDialog}
+        crop={harvestingCrop}
+        language={language}
+        onCompleted={handleYieldRecorded}
+      />
     </Layout>
   );
 }

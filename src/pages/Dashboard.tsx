@@ -203,7 +203,44 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   const { language } = useApp();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   useBackfillCropEvents(language);
+
+  // Crop completion flow state
+  const [harvestingCrop, setHarvestingCrop] = React.useState<any | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = React.useState(false);
+  const [showYieldDialog, setShowYieldDialog] = React.useState(false);
+
+  const openHarvestModal = React.useCallback((crop: any) => {
+    setHarvestingCrop(crop);
+    setShowCompletionModal(true);
+  }, []);
+
+  const handleYieldRecorded = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['activeCrops'] });
+    queryClient.invalidateQueries({ queryKey: ['completedCrops'] });
+    setHarvestingCrop(null);
+  }, [queryClient]);
+
+  const handleMoveToHistory = React.useCallback(async () => {
+    if (!harvestingCrop || !user) return;
+    await supabase
+      .from('crop_history')
+      .update({ status: 'completed', harvested_at: new Date().toISOString() } as any)
+      .eq('id', harvestingCrop.id)
+      .eq('user_id', user.id);
+    queryClient.invalidateQueries({ queryKey: ['activeCrops'] });
+    queryClient.invalidateQueries({ queryKey: ['completedCrops'] });
+    setShowCompletionModal(false);
+    setHarvestingCrop(null);
+  }, [harvestingCrop, user, queryClient]);
+
+  const handleAddSameCrop = React.useCallback(() => {
+    if (!harvestingCrop) return;
+    setShowCompletionModal(false);
+    navigate(`/calendar?addCrop=${encodeURIComponent(harvestingCrop.crop_name)}&fieldName=${encodeURIComponent(harvestingCrop.field_name || '')}`);
+  }, [harvestingCrop, navigate]);
+
 
 
   const { data: crops, isLoading: cropsLoading } = useQuery({

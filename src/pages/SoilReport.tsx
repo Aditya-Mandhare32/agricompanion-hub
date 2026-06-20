@@ -577,8 +577,9 @@ export default function SoilReport() {
             </div>
           )}
 
-          {/* Soil Parameters Form - Show during AND after analysis */}
-          {soilParams && (
+          {/* Soil Parameters Form — only after AI analysis completes (OCR-first flow).
+              While OCR runs or AI analyses, the loader below is shown instead. */}
+          {soilParams && aiAnalysis && (
             <div className="bg-card rounded-2xl shadow-lg border border-border p-6 md:p-8 mb-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold">{t('soilParameters')}</h2>

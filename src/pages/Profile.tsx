@@ -384,6 +384,13 @@ export default function Profile() {
                       <p className="text-lg font-medium mt-1">{profile.land_owned || 'Not set'}</p>
                     )}
                   </div>
+                </div>
+
+                {/* Farm location (GPS) — used by weather + smart notifications */}
+                <FarmLocationSection language={language} />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2" style={{ display: 'none' }} />
                   <div className="space-y-2">
                     <Label>Account Type</Label>
                     {isEditing ? (

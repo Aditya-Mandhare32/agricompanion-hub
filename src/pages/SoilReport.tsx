@@ -790,12 +790,6 @@ export default function SoilReport() {
             </div>
           )}
 
-          {/* Fertilizer table when no AI analysis yet but params exist */}
-          {soilParams && !aiAnalysis && (
-            <div className="mt-8">
-              <FertilizerTable soilData={soilParams} />
-            </div>
-          )}
         </div>
       </div>
 

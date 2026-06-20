@@ -22,8 +22,11 @@ import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
 import {
   Sprout, Calendar, Upload, BarChart3, CloudRain, Sun, Thermometer,
   MapPin, TrendingUp, CheckCircle, Clock, AlertTriangle, ArrowRight,
-  Leaf, Droplets, Bug, Scissors, Activity, Bell, Cloud, CloudSnow, CloudLightning, Wind
+  Leaf, Droplets, Bug, Scissors, Activity, Bell, Cloud, CloudSnow, CloudLightning, Wind, PartyPopper
 } from 'lucide-react';
+import { CropCompletionModal } from '@/components/crops/CropCompletionModal';
+import { RecordYieldDialog } from '@/components/crops/RecordYieldDialog';
+import { CropHistorySection } from '@/components/crops/CropHistorySection';
 
 const fadeIn = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.1 } } };

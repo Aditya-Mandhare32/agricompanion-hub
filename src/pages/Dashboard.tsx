@@ -209,7 +209,12 @@ export default function Dashboard() {
   const { data: crops, isLoading: cropsLoading } = useQuery({
     queryKey: ['activeCrops', user?.id],
     queryFn: async () => {
-      const { data: cropHistory, error } = await supabase.from('crop_history').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
+      const { data: cropHistory, error } = await supabase
+        .from('crop_history')
+        .select('*')
+        .eq('user_id', user!.id)
+        .or('status.is.null,status.eq.active')
+        .order('created_at', { ascending: false });
       if (error) throw error;
       if (!cropHistory?.length) return [];
       // Fetch translated names from crops table

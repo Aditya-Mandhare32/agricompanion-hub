@@ -63,13 +63,14 @@ function getWeatherIcon(description?: string) {
   return <Sun className="h-8 w-8 text-amber-400" />;
 }
 
-const CropCard = React.memo(({ crop, language }: { crop: any; language: string }) => {
+const CropCard = React.memo(({ crop, language, onMarkHarvested }: { crop: any; language: string; onMarkHarvested?: (crop: any) => void }) => {
   const dayNumber = differenceInDays(new Date(), new Date(crop.sowing_date || crop.created_at));
   const totalDuration = crop.expected_harvest_date && crop.sowing_date
     ? differenceInDays(new Date(crop.expected_harvest_date), new Date(crop.sowing_date)) : 120;
   const progress = Math.min(100, Math.max(0, (dayNumber / totalDuration) * 100));
   const progressColor = progress >= 85 ? 'bg-emerald-500' : progress >= 70 ? 'bg-amber-500' : 'bg-red-500';
   const healthEmoji = progress < 30 ? '🌱' : progress < 60 ? '🌿' : progress < 85 ? '🌾' : '🎉';
+  const isReady = progress >= 100;
 
   return (
     <motion.div variants={fadeIn}>
@@ -84,10 +85,16 @@ const CropCard = React.memo(({ crop, language }: { crop: any; language: string }
             </div>
             <div className="flex items-center gap-1">
               <span className="text-2xl">{healthEmoji}</span>
-              <Badge variant="secondary" className="text-xs">
-                <Activity className="h-3 w-3 mr-1" />
-                {language === 'hi' ? 'लाइव' : language === 'mr' ? 'लाइव्ह' : 'Live'}
-              </Badge>
+              {isReady ? (
+                <Badge className="text-xs bg-emerald-500">
+                  {language === 'hi' ? 'तैयार' : language === 'mr' ? 'तयार' : 'Ready'}
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-xs">
+                  <Activity className="h-3 w-3 mr-1" />
+                  {language === 'hi' ? 'लाइव' : language === 'mr' ? 'लाइव्ह' : 'Live'}
+                </Badge>
+              )}
             </div>
           </div>
           <div className="mb-3">
@@ -114,6 +121,16 @@ const CropCard = React.memo(({ crop, language }: { crop: any; language: string }
               <div className="col-span-2"><Badge variant="outline" className="text-xs">{crop.crop_category}</Badge></div>
             )}
           </div>
+          {isReady && onMarkHarvested && (
+            <Button
+              size="sm"
+              className="w-full mt-3 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600"
+              onClick={() => onMarkHarvested(crop)}
+            >
+              <PartyPopper className="h-4 w-4 mr-2" />
+              {language === 'hi' ? 'कटाई दर्ज करें' : language === 'mr' ? 'काढणी नोंदवा' : 'Mark Harvested'}
+            </Button>
+          )}
         </CardContent>
       </Card>
     </motion.div>

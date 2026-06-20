@@ -13,6 +13,9 @@ interface Profile {
   language: string;
   phone?: string | null;
   is_admin?: boolean;
+  farm_latitude?: number | null;
+  farm_longitude?: number | null;
+  farm_location_label?: string | null;
 }
 
 interface AuthContextType {

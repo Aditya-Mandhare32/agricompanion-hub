@@ -22,8 +22,11 @@ import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
 import {
   Sprout, Calendar, Upload, BarChart3, CloudRain, Sun, Thermometer,
   MapPin, TrendingUp, CheckCircle, Clock, AlertTriangle, ArrowRight,
-  Leaf, Droplets, Bug, Scissors, Activity, Bell, Cloud, CloudSnow, CloudLightning, Wind
+  Leaf, Droplets, Bug, Scissors, Activity, Bell, Cloud, CloudSnow, CloudLightning, Wind, PartyPopper
 } from 'lucide-react';
+import { CropCompletionModal } from '@/components/crops/CropCompletionModal';
+import { RecordYieldDialog } from '@/components/crops/RecordYieldDialog';
+import { CropHistorySection } from '@/components/crops/CropHistorySection';
 
 const fadeIn = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
@@ -60,13 +63,14 @@ function getWeatherIcon(description?: string) {
   return <Sun className="h-8 w-8 text-amber-400" />;
 }
 
-const CropCard = React.memo(({ crop, language }: { crop: any; language: string }) => {
+const CropCard = React.memo(({ crop, language, onMarkHarvested }: { crop: any; language: string; onMarkHarvested?: (crop: any) => void }) => {
   const dayNumber = differenceInDays(new Date(), new Date(crop.sowing_date || crop.created_at));
   const totalDuration = crop.expected_harvest_date && crop.sowing_date
     ? differenceInDays(new Date(crop.expected_harvest_date), new Date(crop.sowing_date)) : 120;
   const progress = Math.min(100, Math.max(0, (dayNumber / totalDuration) * 100));
   const progressColor = progress >= 85 ? 'bg-emerald-500' : progress >= 70 ? 'bg-amber-500' : 'bg-red-500';
   const healthEmoji = progress < 30 ? '🌱' : progress < 60 ? '🌿' : progress < 85 ? '🌾' : '🎉';
+  const isReady = progress >= 100;
 
   return (
     <motion.div variants={fadeIn}>
@@ -81,10 +85,16 @@ const CropCard = React.memo(({ crop, language }: { crop: any; language: string }
             </div>
             <div className="flex items-center gap-1">
               <span className="text-2xl">{healthEmoji}</span>
-              <Badge variant="secondary" className="text-xs">
-                <Activity className="h-3 w-3 mr-1" />
-                {language === 'hi' ? 'लाइव' : language === 'mr' ? 'लाइव्ह' : 'Live'}
-              </Badge>
+              {isReady ? (
+                <Badge className="text-xs bg-emerald-500">
+                  {language === 'hi' ? 'तैयार' : language === 'mr' ? 'तयार' : 'Ready'}
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-xs">
+                  <Activity className="h-3 w-3 mr-1" />
+                  {language === 'hi' ? 'लाइव' : language === 'mr' ? 'लाइव्ह' : 'Live'}
+                </Badge>
+              )}
             </div>
           </div>
           <div className="mb-3">
@@ -111,6 +121,16 @@ const CropCard = React.memo(({ crop, language }: { crop: any; language: string }
               <div className="col-span-2"><Badge variant="outline" className="text-xs">{crop.crop_category}</Badge></div>
             )}
           </div>
+          {isReady && onMarkHarvested && (
+            <Button
+              size="sm"
+              className="w-full mt-3 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600"
+              onClick={() => onMarkHarvested(crop)}
+            >
+              <PartyPopper className="h-4 w-4 mr-2" />
+              {language === 'hi' ? 'कटाई दर्ज करें' : language === 'mr' ? 'काढणी नोंदवा' : 'Mark Harvested'}
+            </Button>
+          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -183,13 +203,55 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   const { language } = useApp();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   useBackfillCropEvents(language);
+
+  // Crop completion flow state
+  const [harvestingCrop, setHarvestingCrop] = React.useState<any | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = React.useState(false);
+  const [showYieldDialog, setShowYieldDialog] = React.useState(false);
+
+  const openHarvestModal = React.useCallback((crop: any) => {
+    setHarvestingCrop(crop);
+    setShowCompletionModal(true);
+  }, []);
+
+  const handleYieldRecorded = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['activeCrops'] });
+    queryClient.invalidateQueries({ queryKey: ['completedCrops'] });
+    setHarvestingCrop(null);
+  }, [queryClient]);
+
+  const handleMoveToHistory = React.useCallback(async () => {
+    if (!harvestingCrop || !user) return;
+    await supabase
+      .from('crop_history')
+      .update({ status: 'completed', harvested_at: new Date().toISOString() } as any)
+      .eq('id', harvestingCrop.id)
+      .eq('user_id', user.id);
+    queryClient.invalidateQueries({ queryKey: ['activeCrops'] });
+    queryClient.invalidateQueries({ queryKey: ['completedCrops'] });
+    setShowCompletionModal(false);
+    setHarvestingCrop(null);
+  }, [harvestingCrop, user, queryClient]);
+
+  const handleAddSameCrop = React.useCallback(() => {
+    if (!harvestingCrop) return;
+    setShowCompletionModal(false);
+    navigate(`/calendar?addCrop=${encodeURIComponent(harvestingCrop.crop_name)}&fieldName=${encodeURIComponent(harvestingCrop.field_name || '')}`);
+  }, [harvestingCrop, navigate]);
+
 
 
   const { data: crops, isLoading: cropsLoading } = useQuery({
     queryKey: ['activeCrops', user?.id],
     queryFn: async () => {
-      const { data: cropHistory, error } = await supabase.from('crop_history').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
+      const { data: cropHistory, error } = await supabase
+        .from('crop_history')
+        .select('*')
+        .eq('user_id', user!.id)
+        .or('status.is.null,status.eq.active')
+        .order('created_at', { ascending: false });
       if (error) throw error;
       if (!cropHistory?.length) return [];
       // Fetch translated names from crops table
@@ -429,7 +491,7 @@ export default function Dashboard() {
                 </Button>
               </div>
               <motion.div variants={stagger} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {crops?.map(crop => <CropCard key={crop.id} crop={crop} language={language} />)}
+                {crops?.map(crop => <CropCard key={crop.id} crop={crop} language={language} onMarkHarvested={openHarvestModal} />)}
               </motion.div>
             </motion.section>
 
@@ -517,9 +579,33 @@ export default function Dashboard() {
               <motion.div variants={fadeIn}><SmartNotifications /></motion.div>
               <motion.div variants={fadeIn}><MarketPrices /></motion.div>
             </div>
+
+            {/* Crop History — completed seasons */}
+            <CropHistorySection language={language} />
           </>
         )}
       </motion.div>
+
+      {/* Completion celebration modal */}
+      <CropCompletionModal
+        open={showCompletionModal}
+        onOpenChange={setShowCompletionModal}
+        cropName={harvestingCrop?.crop_name || ''}
+        totalDays={harvestingCrop?.sowing_date ? differenceInDays(new Date(), new Date(harvestingCrop.sowing_date)) : 0}
+        language={language}
+        onRecordYield={() => { setShowCompletionModal(false); setShowYieldDialog(true); }}
+        onAddSameCrop={handleAddSameCrop}
+        onMoveToHistory={handleMoveToHistory}
+      />
+
+      {/* Yield recording form */}
+      <RecordYieldDialog
+        open={showYieldDialog}
+        onOpenChange={setShowYieldDialog}
+        crop={harvestingCrop}
+        language={language}
+        onCompleted={handleYieldRecorded}
+      />
     </Layout>
   );
 }

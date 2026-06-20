@@ -577,23 +577,31 @@ export default function SoilReport() {
             </div>
           )}
 
-          {/* Soil Parameters Form - Show during AND after analysis */}
-          {soilParams && (
+          {/* Soil Parameters Form — only after AI analysis completes (OCR-first flow).
+              While OCR runs or AI analyses, the loader below is shown instead. */}
+          {soilParams && aiAnalysis && (
             <div className="bg-card rounded-2xl shadow-lg border border-border p-6 md:p-8 mb-8">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">{t('soilParameters')}</h2>
+                <div>
+                  <h2 className="text-2xl font-bold">{t('soilParameters')}</h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === 'hi' ? 'निकाले गए मान — आवश्यक हो तो संपादित करें' :
+                     language === 'mr' ? 'काढलेली मूल्ये — आवश्यक असल्यास संपादित करा' :
+                     'Extracted values — edit if needed and re-run analysis'}
+                  </p>
+                </div>
                 <div className="flex gap-2">
-                  {!aiAnalysis && !isAIAnalyzing && (
-                    <Button 
-                      variant="outline"
-                      onClick={() => runAIAnalysis(soilParams)}
-                    >
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      {language === 'hi' ? 'AI विश्लेषण' : language === 'mr' ? 'AI विश्लेषण' : 'Run AI Analysis'}
-                    </Button>
-                  )}
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => runAIAnalysis(soilParams)}
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {language === 'hi' ? 'पुनः विश्लेषण' : language === 'mr' ? 'पुन्हा विश्लेषण' : 'Re-analyze'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setSoilParams(null);
                       setAiAnalysis(null);
@@ -782,12 +790,6 @@ export default function SoilReport() {
             </div>
           )}
 
-          {/* Fertilizer table when no AI analysis yet but params exist */}
-          {soilParams && !aiAnalysis && (
-            <div className="mt-8">
-              <FertilizerTable soilData={soilParams} />
-            </div>
-          )}
         </div>
       </div>
 

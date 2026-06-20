@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { isPushSupported, getPermission, requestPushPermission } from '@/lib/pushNotifications';
 import { NotificationHistory } from '@/components/notifications/NotificationHistory';
+import { FarmLocationSection } from '@/components/profile/FarmLocationSection';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -423,6 +424,10 @@ export default function Profile() {
                 </div>
               </CardContent>
             </Card>
+
+            <div className="mt-6 max-w-2xl mx-auto">
+              <FarmLocationSection language={language} />
+            </div>
           </TabsContent>
 
           {/* Saved Tab */}

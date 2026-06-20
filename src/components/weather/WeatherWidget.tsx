@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Sun, Cloud, CloudRain, CloudDrizzle, CloudLightning, CloudFog, CloudSun,
-  Droplets, Wind, Thermometer, MapPin, AlertTriangle, RefreshCw, Navigation,
+  Droplets, Wind, Thermometer, MapPin, AlertTriangle, RefreshCw, Navigation, Pin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface WeatherData {
   city: string;
@@ -42,17 +44,31 @@ const GEO_CACHE_KEY = 'agri360_geo_coords';
 const GEO_PERM_KEY = 'agri360_geo_perm';
 
 export function WeatherWidget({ city = 'Pune', language = 'en', compact = false, useGeolocation = false }: WeatherWidgetProps) {
+  const { profile, updateProfile } = useAuth();
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [geoDenied, setGeoDenied] = useState(false);
+  const [savingFarm, setSavingFarm] = useState(false);
+
+  // Prefer saved farm coords from profile. Fall back to cached GPS if user has not set one yet.
+  const farmCoords = (profile?.farm_latitude != null && profile?.farm_longitude != null)
+    ? { lat: profile.farm_latitude, lon: profile.farm_longitude }
+    : null;
+
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(() => {
+    if (farmCoords) return farmCoords;
     if (!useGeolocation) return null;
     try {
       const cached = localStorage.getItem(GEO_CACHE_KEY);
       return cached ? JSON.parse(cached) : null;
     } catch { return null; }
   });
+
+  // Sync when profile loads/changes after mount.
+  useEffect(() => {
+    if (farmCoords) setCoords(farmCoords);
+  }, [profile?.farm_latitude, profile?.farm_longitude]); // eslint-disable-line
 
   const requestGeolocation = useCallback(() => {
     if (!('geolocation' in navigator)) { setGeoDenied(true); return; }
@@ -76,11 +92,34 @@ export function WeatherWidget({ city = 'Pune', language = 'en', compact = false,
   }, []);
 
   useEffect(() => {
+    // If farm coords are saved, never ask for GPS again.
+    if (farmCoords) return;
     if (!useGeolocation) return;
     const prev = (() => { try { return localStorage.getItem(GEO_PERM_KEY); } catch { return null; } })();
     if (prev === 'denied') { setGeoDenied(true); return; }
     if (!coords) requestGeolocation();
-  }, [useGeolocation, coords, requestGeolocation]);
+  }, [useGeolocation, coords, requestGeolocation, farmCoords]);
+
+  const saveAsFarmLocation = async () => {
+    if (!coords) return;
+    setSavingFarm(true);
+    try {
+      await updateProfile({
+        farm_latitude: coords.lat,
+        farm_longitude: coords.lon,
+        farm_location_label: weather ? `${weather.city}, ${weather.state}` : null,
+      } as any);
+      toast.success(
+        language === 'hi' ? 'खेत का स्थान सहेजा गया' :
+        language === 'mr' ? 'शेताचे ठिकाण जतन झाले' :
+        'Saved as your farm location'
+      );
+    } catch (e) {
+      toast.error('Could not save farm location');
+    } finally {
+      setSavingFarm(false);
+    }
+  };
 
   const fetchWeather = useCallback(async () => {
     setLoading(true);
@@ -157,6 +196,8 @@ export function WeatherWidget({ city = 'Pune', language = 'en', compact = false,
   }
 
   const WeatherIcon = iconMap[weather.current.icon] || Sun;
+  // Show "save as farm" only when we have a GPS reading but the profile has no saved farm yet.
+  const showSaveFarmPrompt = !!coords && !farmCoords && !!profile;
 
   if (compact) {
     return (
@@ -189,7 +230,7 @@ export function WeatherWidget({ city = 'Pune', language = 'en', compact = false,
   return (
     <Card className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 border-sky-200 overflow-hidden">
       <CardContent className="p-0">
-        {useGeolocation && geoDenied && (
+        {useGeolocation && geoDenied && !farmCoords && (
           <div className="px-4 pt-3 -mb-1 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border-b border-amber-200 py-2">
             <Navigation className="h-3.5 w-3.5" />
             <span className="flex-1">
@@ -198,10 +239,28 @@ export function WeatherWidget({ city = 'Pune', language = 'en', compact = false,
             <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={requestGeolocation}>Retry</Button>
           </div>
         )}
+        {showSaveFarmPrompt && (
+          <div className="px-4 pt-3 -mb-1 flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 border-b border-emerald-200 py-2">
+            <Pin className="h-3.5 w-3.5" />
+            <span className="flex-1">
+              {language === 'hi' ? 'इस स्थान को अपना खेत बनाएं?' :
+               language === 'mr' ? 'हे ठिकाण तुमचे शेत म्हणून जतन करायचे?' :
+               'Save this as your farm location?'}
+            </span>
+            <Button size="sm" variant="default" className="h-6 text-xs" disabled={savingFarm} onClick={saveAsFarmLocation}>
+              {savingFarm ? '…' : (language === 'hi' ? 'सहेजें' : language === 'mr' ? 'जतन करा' : 'Save')}
+            </Button>
+          </div>
+        )}
         <div className="p-4 bg-gradient-to-r from-sky-500 to-blue-600 text-white">
           <div className="flex items-center gap-1 text-sm opacity-80 mb-2">
             <MapPin className="h-4 w-4" />
             {weather.city}, {weather.state}
+            {farmCoords && (
+              <Badge variant="secondary" className="ml-2 h-5 text-[10px] bg-white/20 text-white border-0">
+                {language === 'hi' ? 'खेत' : language === 'mr' ? 'शेत' : 'Farm'}
+              </Badge>
+            )}
             <Button variant="ghost" size="sm" onClick={fetchWeather}
               className="ml-auto text-white/80 hover:text-white hover:bg-white/10 h-6 w-6 p-0">
               <RefreshCw className="h-3 w-3" />

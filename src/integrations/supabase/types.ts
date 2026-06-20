@@ -140,6 +140,72 @@ export type Database = {
         }
         Relationships: []
       }
+      completed_crops: {
+        Row: {
+          area: string | null
+          created_at: string
+          crop_name: string
+          crop_schedule_id: string | null
+          field_name: string | null
+          harvest_date: string
+          health_score_average: number | null
+          id: string
+          issues_faced: string[] | null
+          notes: string | null
+          season_rating: number | null
+          selling_price: number | null
+          sowing_date: string | null
+          total_days: number | null
+          total_income: number | null
+          updated_at: string
+          user_id: string
+          yield_amount: number | null
+          yield_unit: string | null
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          crop_name: string
+          crop_schedule_id?: string | null
+          field_name?: string | null
+          harvest_date?: string
+          health_score_average?: number | null
+          id?: string
+          issues_faced?: string[] | null
+          notes?: string | null
+          season_rating?: number | null
+          selling_price?: number | null
+          sowing_date?: string | null
+          total_days?: number | null
+          total_income?: number | null
+          updated_at?: string
+          user_id: string
+          yield_amount?: number | null
+          yield_unit?: string | null
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          crop_name?: string
+          crop_schedule_id?: string | null
+          field_name?: string | null
+          harvest_date?: string
+          health_score_average?: number | null
+          id?: string
+          issues_faced?: string[] | null
+          notes?: string | null
+          season_rating?: number | null
+          selling_price?: number | null
+          sowing_date?: string | null
+          total_days?: number | null
+          total_income?: number | null
+          updated_at?: string
+          user_id?: string
+          yield_amount?: number | null
+          yield_unit?: string | null
+        }
+        Relationships: []
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
@@ -194,10 +260,12 @@ export type Database = {
           crop_name: string
           expected_harvest_date: string | null
           field_name: string | null
+          harvested_at: string | null
           id: string
           soil_profile_id: string | null
           source: string | null
           sowing_date: string | null
+          status: string
           suitability_score: number | null
           user_id: string
         }
@@ -207,10 +275,12 @@ export type Database = {
           crop_name: string
           expected_harvest_date?: string | null
           field_name?: string | null
+          harvested_at?: string | null
           id?: string
           soil_profile_id?: string | null
           source?: string | null
           sowing_date?: string | null
+          status?: string
           suitability_score?: number | null
           user_id: string
         }
@@ -220,10 +290,12 @@ export type Database = {
           crop_name?: string
           expected_harvest_date?: string | null
           field_name?: string | null
+          harvested_at?: string | null
           id?: string
           soil_profile_id?: string | null
           source?: string | null
           sowing_date?: string | null
+          status?: string
           suitability_score?: number | null
           user_id?: string
         }
@@ -585,6 +657,9 @@ export type Database = {
           account_type: string | null
           avatar_url: string | null
           created_at: string
+          farm_latitude: number | null
+          farm_location_label: string | null
+          farm_longitude: number | null
           id: string
           is_admin: boolean
           land_owned: string | null
@@ -599,6 +674,9 @@ export type Database = {
           account_type?: string | null
           avatar_url?: string | null
           created_at?: string
+          farm_latitude?: number | null
+          farm_location_label?: string | null
+          farm_longitude?: number | null
           id?: string
           is_admin?: boolean
           land_owned?: string | null
@@ -613,6 +691,9 @@ export type Database = {
           account_type?: string | null
           avatar_url?: string | null
           created_at?: string
+          farm_latitude?: number | null
+          farm_location_label?: string | null
+          farm_longitude?: number | null
           id?: string
           is_admin?: boolean
           land_owned?: string | null

@@ -5,6 +5,7 @@ export type NotifType =
   | 'pest_alert' | 'weather_warning' | 'activity_conflict' | 'health_drop'
   | 'soil_ready' | 'market_price' | 'weekly_summary'
   | 'community_reply' | 'nearby_farmer'
+  | 'crop_harvest_complete'
   | 'gov_scheme';
 
 export type NotifPriority = 'high' | 'normal' | 'low';

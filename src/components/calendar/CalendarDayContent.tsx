@@ -30,7 +30,8 @@ export function CalendarDayContent({ date, events }: CalendarDayContentProps) {
       <span className="font-semibold">{date.getDate()}</span>
       <div className="flex gap-0.5 mt-0.5">
         {uniqueTypes.slice(0, 3).map((type) => {
-          const config = eventTypeIcons[type];
+          const config = eventTypeIcons[type as keyof typeof eventTypeIcons];
+          if (!config) return null;
           const Icon = config.icon;
           return (
             <Icon 

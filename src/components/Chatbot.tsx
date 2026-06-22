@@ -33,6 +33,7 @@ const sizeConfig = { small: { width: 380, height: 500 }, medium: { width: 440, h
 
 export function Chatbot() {
   const { language } = useApp();
+  const { user } = useAuth();
   const lang = language as 'en' | 'hi' | 'mr';
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([

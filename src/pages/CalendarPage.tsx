@@ -662,6 +662,12 @@ export default function CalendarPage() {
         language={language} 
         onSubmit={handleHealthSubmit} 
       />
+      <RescheduleDialog
+        open={!!rescheduleEvent}
+        onOpenChange={(o) => !o && setRescheduleEvent(null)}
+        event={rescheduleEvent}
+        allEvents={calendarEvents}
+      />
 
       {/* Delete Crop Confirmation */}
       <AlertDialog open={!!deletingCropId} onOpenChange={() => setDeletingCropId(null)}>

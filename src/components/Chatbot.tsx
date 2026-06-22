@@ -3,6 +3,8 @@ import { X, Send, Volume2, VolumeX, Loader2, Maximize2, Minimize2, GripVertical,
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { buildFarmerContext } from '@/lib/farmerContext';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {

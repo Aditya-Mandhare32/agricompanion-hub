@@ -119,6 +119,7 @@ export default function CalendarPage() {
   const [deletingCropId, setDeletingCropId] = useState<string | null>(null);
   const [cropActivitiesData, setCropActivitiesData] = useState<Record<string, CropActivityData>>({});
   const [healthPopup, setHealthPopup] = useState<{ open: boolean; cropName: string; activity: string }>({ open: false, cropName: '', activity: '' });
+  const [rescheduleEvent, setRescheduleEvent] = useState<CropEvent | null>(null);
   
   const [newEvent, setNewEvent] = useState({
     cropName: '', eventType: 'Sowing', date: new Date(), notes: '',

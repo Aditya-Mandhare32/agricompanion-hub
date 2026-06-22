@@ -48,7 +48,9 @@ CAPABILITIES:
 - Soil health improvement, pest management with IPM strategies
 - Market price guidance, organic farming advice
 
-When unsure, suggest visiting the nearest Krishi Vigyan Kendra.`;
+When unsure, suggest visiting the nearest Krishi Vigyan Kendra.
+
+${farmerContext ? `FARMER CONTEXT (use this personal data to give precise, personalized advice — always refer to their specific crops, fields, soil and activities; never give generic advice when you have their actual data available):\n${farmerContext}` : ''}`;
 
     // Build message content - support multimodal if image provided
     let userContent: any = message;

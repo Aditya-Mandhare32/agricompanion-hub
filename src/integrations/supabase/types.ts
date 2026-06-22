@@ -114,6 +114,9 @@ export type Database = {
           id: string
           notes: string | null
           notification_sent: boolean | null
+          original_date: string | null
+          rescheduled_at: string | null
+          rescheduled_reason: string | null
           user_id: string
         }
         Insert: {
@@ -125,6 +128,9 @@ export type Database = {
           id?: string
           notes?: string | null
           notification_sent?: boolean | null
+          original_date?: string | null
+          rescheduled_at?: string | null
+          rescheduled_reason?: string | null
           user_id: string
         }
         Update: {
@@ -136,6 +142,9 @@ export type Database = {
           id?: string
           notes?: string | null
           notification_sent?: boolean | null
+          original_date?: string | null
+          rescheduled_at?: string | null
+          rescheduled_reason?: string | null
           user_id?: string
         }
         Relationships: []

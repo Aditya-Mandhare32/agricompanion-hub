@@ -3,6 +3,8 @@ import { X, Send, Volume2, VolumeX, Loader2, Maximize2, Minimize2, GripVertical,
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { buildFarmerContext } from '@/lib/farmerContext';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -31,6 +33,7 @@ const sizeConfig = { small: { width: 380, height: 500 }, medium: { width: 440, h
 
 export function Chatbot() {
   const { language } = useApp();
+  const { user } = useAuth();
   const lang = language as 'en' | 'hi' | 'mr';
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -139,6 +142,9 @@ export function Chatbot() {
 
       const body: any = { message: text, language: lang, conversationHistory };
       if (imageDataUrl) body.imageUrl = imageDataUrl;
+      if (user) {
+        body.farmerContext = await buildFarmerContext({ userId: user.id, language: lang });
+      }
 
       const { data, error } = await supabase.functions.invoke('chatbot-ai', { body });
       if (error) throw error;

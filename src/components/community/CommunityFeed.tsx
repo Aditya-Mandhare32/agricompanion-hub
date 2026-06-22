@@ -348,23 +348,23 @@ export function CommunityFeed({ onNavigateToMessages }: CommunityFeedProps) {
                   <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={removeSelectedMedia}><X className="h-3 w-3" /></Button>
                 </div>
               )}
-              <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                <div className="flex gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t">
+                <div className="flex flex-wrap gap-1.5 min-w-0">
                   <input type="file" id="post-media-input" accept="image/*,video/*" onChange={handleMediaSelect} className="hidden" />
-                  <Button variant="ghost" size="sm" className={selectedMedia ? 'text-primary' : 'text-muted-foreground'} onClick={() => document.getElementById('post-media-input')?.click()}>
-                    <ImageIcon className="h-5 w-5 mr-1" />
-                    {language === 'hi' ? 'फोटो' : language === 'mr' ? 'फोटो' : 'Photo'}
+                  <Button variant="ghost" size="sm" className={`px-2 ${selectedMedia ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => document.getElementById('post-media-input')?.click()}>
+                    <ImageIcon className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden xs:inline sm:inline">{language === 'hi' ? 'फोटो' : language === 'mr' ? 'फोटो' : 'Photo'}</span>
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { const input = document.getElementById('post-media-input') as HTMLInputElement; if (input) { input.accept = 'video/*'; input.click(); input.accept = 'image/*,video/*'; } }}>
-                    <Video className="h-5 w-5 mr-1" />
-                    {language === 'hi' ? 'वीडियो' : language === 'mr' ? 'व्हिडिओ' : 'Video'}
+                  <Button variant="ghost" size="sm" className="px-2 text-muted-foreground" onClick={() => { const input = document.getElementById('post-media-input') as HTMLInputElement; if (input) { input.accept = 'video/*'; input.click(); input.accept = 'image/*,video/*'; } }}>
+                    <Video className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden xs:inline sm:inline">{language === 'hi' ? 'वीडियो' : language === 'mr' ? 'व्हिडिओ' : 'Video'}</span>
                   </Button>
-                  <Button variant={isAskingQuestion ? 'secondary' : 'ghost'} size="sm" onClick={() => setIsAskingQuestion(!isAskingQuestion)} className={isAskingQuestion ? 'bg-amber-100 text-amber-700' : 'text-muted-foreground'}>
-                    <HelpCircle className="h-5 w-5 mr-1" />
-                    {language === 'hi' ? 'सवाल' : language === 'mr' ? 'प्रश्न' : 'Question'}
+                  <Button variant={isAskingQuestion ? 'secondary' : 'ghost'} size="sm" onClick={() => setIsAskingQuestion(!isAskingQuestion)} className={`px-2 ${isAskingQuestion ? 'bg-amber-100 text-amber-700' : 'text-muted-foreground'}`}>
+                    <HelpCircle className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden xs:inline sm:inline">{language === 'hi' ? 'सवाल' : language === 'mr' ? 'प्रश्न' : 'Question'}</span>
                   </Button>
                 </div>
-                <Button onClick={createPost} disabled={!newPost.trim() || isPosting || isUploadingMedia} size="sm" className="bg-primary">
+                <Button onClick={createPost} disabled={!newPost.trim() || isPosting || isUploadingMedia} size="sm" className="bg-primary shrink-0">
                   {isPosting || isUploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
                   {language === 'hi' ? 'पोस्ट' : language === 'mr' ? 'पोस्ट' : 'Post'}
                 </Button>

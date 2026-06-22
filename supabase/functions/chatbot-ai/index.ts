@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { message, language = "en", conversationHistory = [], imageUrl } = await req.json();
+    const { message, language = "en", conversationHistory = [], imageUrl, farmerContext = "" } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -48,7 +48,9 @@ CAPABILITIES:
 - Soil health improvement, pest management with IPM strategies
 - Market price guidance, organic farming advice
 
-When unsure, suggest visiting the nearest Krishi Vigyan Kendra.`;
+When unsure, suggest visiting the nearest Krishi Vigyan Kendra.
+
+${farmerContext ? `FARMER CONTEXT (use this personal data to give precise, personalized advice — always refer to their specific crops, fields, soil and activities; never give generic advice when you have their actual data available):\n${farmerContext}` : ''}`;
 
     // Build message content - support multimodal if image provided
     let userContent: any = message;

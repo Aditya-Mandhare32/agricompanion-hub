@@ -32,6 +32,7 @@ import { CropCycleEditDialog } from '@/components/calendar/CropCycleEditDialog';
 import { ShopSection } from '@/components/calendar/ShopSection';
 import { AddOtherCropDialog } from '@/components/calendar/AddOtherCropDialog';
 import { CropHealthPopup } from '@/components/calendar/CropHealthPopup';
+import { RescheduleDialog } from '@/components/calendar/RescheduleDialog';
 import { useCalendarEvents, useActiveCrops, useDeleteCrop, useAllCropsFromDB } from '@/hooks/useCrops';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -118,6 +119,7 @@ export default function CalendarPage() {
   const [deletingCropId, setDeletingCropId] = useState<string | null>(null);
   const [cropActivitiesData, setCropActivitiesData] = useState<Record<string, CropActivityData>>({});
   const [healthPopup, setHealthPopup] = useState<{ open: boolean; cropName: string; activity: string }>({ open: false, cropName: '', activity: '' });
+  const [rescheduleEvent, setRescheduleEvent] = useState<CropEvent | null>(null);
   
   const [newEvent, setNewEvent] = useState({
     cropName: '', eventType: 'Sowing', date: new Date(), notes: '',
@@ -497,7 +499,7 @@ export default function CalendarPage() {
                 onCycleClick={(cycle) => setEditingCycle(cycle)}
               />
             ) : (
-              <TimelineView events={calendarEvents} cropCycles={cropCycles} onCycleClick={(cycle) => setEditingCycle(cycle)} onCycleDelete={(id) => setCropCycles(prev => prev.filter(c => c.id !== id))} onEventEdit={() => {}} onEventDelete={handleDeleteEvent} />
+              <TimelineView events={calendarEvents} cropCycles={cropCycles} onCycleClick={(cycle) => setEditingCycle(cycle)} onCycleDelete={(id) => setCropCycles(prev => prev.filter(c => c.id !== id))} onEventEdit={(e) => setRescheduleEvent(e)} onEventDelete={handleDeleteEvent} />
             )}
 
             {/* Selected Date Events */}
@@ -534,7 +536,10 @@ export default function CalendarPage() {
                                   {event.notes && <p className="text-sm text-muted-foreground mt-1">{event.notes}</p>}
                                 </div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-1 flex-wrap justify-end">
+                                <Button variant="outline" size="sm" onClick={() => setRescheduleEvent(event)} className="h-8 text-xs">
+                                  <CalendarIcon className="h-3.5 w-3.5 mr-1" />Reschedule
+                                </Button>
                                 <Button variant="ghost" size="icon" onClick={() => handleToggleComplete(event)} className={event.completed ? 'text-green-600' : ''}><Check className="h-4 w-4" /></Button>
                                 <Button variant="ghost" size="icon" onClick={() => handleDeleteEvent(event.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                               </div>
@@ -656,6 +661,12 @@ export default function CalendarPage() {
         activityName={healthPopup.activity} 
         language={language} 
         onSubmit={handleHealthSubmit} 
+      />
+      <RescheduleDialog
+        open={!!rescheduleEvent}
+        onOpenChange={(o) => !o && setRescheduleEvent(null)}
+        event={rescheduleEvent}
+        allEvents={calendarEvents}
       />
 
       {/* Delete Crop Confirmation */}

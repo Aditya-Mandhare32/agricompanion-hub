@@ -386,7 +386,8 @@ export function TimelineView({
                 )
                 .slice(0, 10)
                 .map((event) => {
-                  const config = eventTypeConfig[event.eventType];
+                  const key = String(event.eventType ?? '').toLowerCase() as keyof typeof eventTypeConfig;
+                  const config = eventTypeConfig[key] ?? { icon: Sprout, color: 'bg-muted-foreground', label: String(event.eventType ?? 'Event'), textColor: 'text-muted-foreground' };
                   const Icon = config.icon;
                   return (
                     <div

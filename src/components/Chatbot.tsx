@@ -142,6 +142,9 @@ export function Chatbot() {
 
       const body: any = { message: text, language: lang, conversationHistory };
       if (imageDataUrl) body.imageUrl = imageDataUrl;
+      if (user) {
+        body.farmerContext = await buildFarmerContext({ userId: user.id, language: lang });
+      }
 
       const { data, error } = await supabase.functions.invoke('chatbot-ai', { body });
       if (error) throw error;

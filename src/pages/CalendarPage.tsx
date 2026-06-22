@@ -32,6 +32,7 @@ import { CropCycleEditDialog } from '@/components/calendar/CropCycleEditDialog';
 import { ShopSection } from '@/components/calendar/ShopSection';
 import { AddOtherCropDialog } from '@/components/calendar/AddOtherCropDialog';
 import { CropHealthPopup } from '@/components/calendar/CropHealthPopup';
+import { RescheduleDialog } from '@/components/calendar/RescheduleDialog';
 import { useCalendarEvents, useActiveCrops, useDeleteCrop, useAllCropsFromDB } from '@/hooks/useCrops';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

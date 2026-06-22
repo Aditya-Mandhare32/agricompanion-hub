@@ -536,7 +536,10 @@ export default function CalendarPage() {
                                   {event.notes && <p className="text-sm text-muted-foreground mt-1">{event.notes}</p>}
                                 </div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-1 flex-wrap justify-end">
+                                <Button variant="outline" size="sm" onClick={() => setRescheduleEvent(event)} className="h-8 text-xs">
+                                  <CalendarIcon className="h-3.5 w-3.5 mr-1" />Reschedule
+                                </Button>
                                 <Button variant="ghost" size="icon" onClick={() => handleToggleComplete(event)} className={event.completed ? 'text-green-600' : ''}><Check className="h-4 w-4" /></Button>
                                 <Button variant="ghost" size="icon" onClick={() => handleDeleteEvent(event.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                               </div>

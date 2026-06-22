@@ -499,7 +499,7 @@ export default function CalendarPage() {
                 onCycleClick={(cycle) => setEditingCycle(cycle)}
               />
             ) : (
-              <TimelineView events={calendarEvents} cropCycles={cropCycles} onCycleClick={(cycle) => setEditingCycle(cycle)} onCycleDelete={(id) => setCropCycles(prev => prev.filter(c => c.id !== id))} onEventEdit={() => {}} onEventDelete={handleDeleteEvent} />
+              <TimelineView events={calendarEvents} cropCycles={cropCycles} onCycleClick={(cycle) => setEditingCycle(cycle)} onCycleDelete={(id) => setCropCycles(prev => prev.filter(c => c.id !== id))} onEventEdit={(e) => setRescheduleEvent(e)} onEventDelete={handleDeleteEvent} />
             )}
 
             {/* Selected Date Events */}

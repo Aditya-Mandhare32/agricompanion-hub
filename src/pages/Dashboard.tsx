@@ -503,7 +503,7 @@ export default function Dashboard() {
                 {weatherData?.current ? (
                   <div className="flex items-end gap-6 mb-4">
                     <div className="flex items-center gap-3">
-                      {getWeatherIcon(weatherData.current.description)}
+                      {getWeatherIcon(weatherData.current.icon || weatherData.current.description)}
                       <div>
                         <div className="text-5xl font-bold">{Math.round(weatherData.current.temperature)}°C</div>
                         <div className="text-sm opacity-80 capitalize">{weatherData.current.description}</div>

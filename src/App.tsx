@@ -23,6 +23,8 @@ import Admin from "./pages/Admin";
 import { ProtectedAdminRoute } from "./components/ProtectedAdminRoute";
 import FarmerProfile from "./pages/FarmerProfile";
 import NotFound from "./pages/NotFound";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 
 const queryClient = new QueryClient();
@@ -47,6 +49,8 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/soil-report" element={<SoilReport />} />
               <Route path="/crops" element={<Crops />} />
               <Route path="/crop-explorer" element={<CropExplorer />} />

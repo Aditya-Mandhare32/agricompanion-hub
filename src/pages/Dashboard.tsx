@@ -31,35 +31,39 @@ import { CropHistorySection } from '@/components/crops/CropHistorySection';
 const fadeIn = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
 
-// Dynamic weather background images based on conditions
-function getWeatherImage(description?: string, temp?: number): string {
-  const desc = (description || '').toLowerCase();
-  if (desc.includes('rain') || desc.includes('drizzle') || desc.includes('shower'))
+// Dynamic weather background images based on the LANGUAGE-INDEPENDENT
+// `icon` code returned by the weather edge function (e.g. 'cloud-rain').
+// Falling back to checking the translated description was breaking the image
+// when the user switched language because the Hindi/Marathi description
+// no longer matches English keywords like 'rain' or 'cloud'.
+function getWeatherImage(icon?: string, temp?: number): string {
+  const code = (icon || '').toLowerCase();
+  if (code.includes('rain') || code.includes('drizzle') || code.includes('shower'))
     return 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=1920&q=80';
-  if (desc.includes('thunder') || desc.includes('storm'))
+  if (code.includes('thunder') || code.includes('storm') || code.includes('lightning'))
     return 'https://images.unsplash.com/photo-1605727216801-e27ce1d0cc28?w=1920&q=80';
-  if (desc.includes('snow') || desc.includes('sleet'))
+  if (code.includes('snow') || code.includes('sleet'))
     return 'https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=1920&q=80';
-  if (desc.includes('fog') || desc.includes('mist') || desc.includes('haze'))
+  if (code.includes('fog') || code.includes('mist') || code.includes('haze'))
     return 'https://images.unsplash.com/photo-1487621167305-5d248087c724?w=1920&q=80';
-  if (desc.includes('cloud') || desc.includes('overcast'))
+  if (code.includes('cloud') || code.includes('overcast'))
     return 'https://images.unsplash.com/photo-1501004318855-fce4f4ed9fbc?w=1920&q=80';
-  if (temp && temp > 38)
+  if (typeof temp === 'number' && temp > 38)
     return 'https://images.unsplash.com/photo-1504370805625-d32c54b16100?w=1920&q=80';
-  if (temp && temp > 32)
+  if (typeof temp === 'number' && temp > 32)
     return 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80';
-  if (temp && temp < 15)
+  if (typeof temp === 'number' && temp < 15)
     return 'https://images.unsplash.com/photo-1510596713412-56030de252c8?w=1920&q=80';
   return 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80';
 }
 
-function getWeatherIcon(description?: string) {
-  const desc = (description || '').toLowerCase();
-  if (desc.includes('rain') || desc.includes('drizzle')) return <CloudRain className="h-8 w-8 text-sky-300" />;
-  if (desc.includes('thunder') || desc.includes('storm')) return <CloudLightning className="h-8 w-8 text-yellow-300" />;
-  if (desc.includes('snow')) return <CloudSnow className="h-8 w-8 text-blue-200" />;
-  if (desc.includes('cloud') || desc.includes('overcast')) return <Cloud className="h-8 w-8 text-gray-300" />;
-  if (desc.includes('fog') || desc.includes('mist')) return <Wind className="h-8 w-8 text-gray-400" />;
+function getWeatherIcon(icon?: string) {
+  const code = (icon || '').toLowerCase();
+  if (code.includes('rain') || code.includes('drizzle')) return <CloudRain className="h-8 w-8 text-sky-300" />;
+  if (code.includes('thunder') || code.includes('storm') || code.includes('lightning')) return <CloudLightning className="h-8 w-8 text-yellow-300" />;
+  if (code.includes('snow')) return <CloudSnow className="h-8 w-8 text-blue-200" />;
+  if (code.includes('cloud') || code.includes('overcast')) return <Cloud className="h-8 w-8 text-gray-300" />;
+  if (code.includes('fog') || code.includes('mist')) return <Wind className="h-8 w-8 text-gray-400" />;
   return <Sun className="h-8 w-8 text-amber-400" />;
 }
 
@@ -289,10 +293,12 @@ export default function Dashboard() {
   });
 
   const { data: weatherData } = useQuery({
-    queryKey: ['weather', profile?.location || 'Pune', language],
+    // NOTE: language is intentionally not part of the query key — switching
+    // language must not refetch weather (and must not change the background image).
+    queryKey: ['weather', profile?.location || 'Pune'],
     queryFn: async () => {
       const city = profile?.location?.split(',')[0]?.trim() || 'Pune';
-      const { data, error } = await supabase.functions.invoke('get-weather', { body: { city, language } });
+      const { data, error } = await supabase.functions.invoke('get-weather', { body: { city, language: 'en' } });
       if (error) throw error;
       return data;
     },
@@ -364,12 +370,100 @@ export default function Dashboard() {
   if (cropsLoading) return <Layout><div className="container mx-auto px-4 py-8"><DashboardSkeleton /></div></Layout>;
 
   const hasCrops = (crops?.length || 0) > 0;
-  const weatherBgImage = getWeatherImage(weatherData?.current?.description, weatherData?.current?.temperature);
-  const weatherTip = weatherData?.farmingTip || (
-    language === 'hi' ? '✓ आज खेती के लिए अच्छा दिन है' :
-    language === 'mr' ? '✓ आज शेतीसाठी चांगला दिवस आहे' :
-    '✓ Good conditions for farming today'
-  );
+  // Image is derived from the language-independent icon code, so it stays
+  // stable across language switches.
+  const weatherBgImage = getWeatherImage(weatherData?.current?.icon, weatherData?.current?.temperature);
+
+  // Dynamic Today's Tip — combines weather + active crop stage + upcoming events.
+  const weatherTip = useMemo(() => {
+    const c = weatherData?.current;
+    const temp = c?.temperature;
+    const humidity = c?.humidity;
+    const desc = (c?.icon || c?.description || '').toLowerCase();
+    const isRaining = desc.includes('rain') || desc.includes('drizzle') || desc.includes('shower') || desc.includes('thunder');
+    const isClear = !isRaining && !desc.includes('cloud') && !desc.includes('fog');
+
+    const activeCrop = crops?.[0];
+    const cropName = activeCrop?.crop_name;
+    const fieldName = activeCrop?.field_name;
+
+    // Determine stage from days since sowing
+    let stage: 'germination' | 'vegetative' | 'flowering' | 'fruiting' | 'mature' | null = null;
+    if (activeCrop?.sowing_date) {
+      const days = differenceInDays(new Date(), new Date(activeCrop.sowing_date));
+      if (days < 15) stage = 'germination';
+      else if (days < 45) stage = 'vegetative';
+      else if (days < 75) stage = 'flowering';
+      else if (days < 105) stage = 'fruiting';
+      else stage = 'mature';
+    }
+
+    // Find upcoming spray / irrigation / harvest events within next 7 days
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const next7 = (upcomingEvents || []).filter((e: any) => {
+      const d = new Date(e.event_date);
+      return d >= today0 && differenceInDays(d, today0) <= 7;
+    });
+    const hasSpraySoon = next7.some((e: any) => /spray|pesticide/i.test(e.event_type));
+    const hasIrrigationSoon = next7.some((e: any) => /irrigat|water/i.test(e.event_type));
+    const hasHarvestSoon = next7.some((e: any) => /harvest|cut/i.test(e.event_type));
+    const nextHarvest = next7.find((e: any) => /harvest/i.test(e.event_type));
+
+    const fieldLabel = fieldName ? ` (${fieldName})` : '';
+
+    const ENG = (en: string, hi: string, mr: string) =>
+      language === 'hi' ? hi : language === 'mr' ? mr : en;
+
+    if (!hasCrops) {
+      return ENG(
+        'Add your first crop to get personalized daily farming tips',
+        'दैनिक खेती सुझाव के लिए अपनी पहली फसल जोड़ें',
+        'दैनिक शेती सूचनांसाठी तुमचे पहिले पीक जोडा',
+      );
+    }
+
+    if (isRaining && hasSpraySoon) {
+      return ENG(
+        'Rain today — avoid pesticide spraying, reschedule to a dry day',
+        'आज बारिश — कीटनाशक छिड़काव टालें, सूखे दिन पर पुनर्निर्धारित करें',
+        'आज पाऊस — कीटकनाशक फवारणी टाळा, कोरड्या दिवशी पुन्हा नियोजित करा',
+      );
+    }
+    if (typeof temp === 'number' && temp > 35 && stage === 'germination') {
+      return ENG(
+        'High heat today — water seedlings in early morning to prevent stress',
+        'आज तेज गर्मी — तनाव से बचने के लिए सुबह जल्दी पौधों को पानी दें',
+        'आज जास्त उष्णता — ताण टाळण्यासाठी पहाटे रोपांना पाणी द्या',
+      );
+    }
+    if (typeof humidity === 'number' && humidity > 75 && stage === 'flowering') {
+      return ENG(
+        `High humidity — watch for fungal symptoms on ${cropName || 'crop'} flowers today`,
+        `अधिक आर्द्रता — आज ${cropName || 'फसल'} के फूलों पर फफूंदी के लक्षण देखें`,
+        `जास्त आर्द्रता — आज ${cropName || 'पिकाच्या'} फुलांवर बुरशीचे लक्षण पहा`,
+      );
+    }
+    if (isClear && hasIrrigationSoon && cropName) {
+      return ENG(
+        `Good conditions — ideal day to irrigate ${cropName}${fieldLabel}`,
+        `अच्छी स्थिति — ${cropName}${fieldLabel} की सिंचाई के लिए आदर्श दिन`,
+        `चांगल्या स्थिती — ${cropName}${fieldLabel} सिंचनासाठी योग्य दिवस`,
+      );
+    }
+    if (hasHarvestSoon && isClear && cropName) {
+      const dateStr = nextHarvest ? format(new Date(nextHarvest.event_date), 'dd MMM') : '';
+      return ENG(
+        `Clear weather ahead — good conditions for ${cropName} harvest on ${dateStr}`,
+        `मौसम साफ — ${dateStr} को ${cropName} की कटाई के लिए अच्छी स्थिति`,
+        `हवामान स्वच्छ — ${dateStr} रोजी ${cropName} काढणीसाठी चांगली स्थिती`,
+      );
+    }
+    return ENG(
+      '✓ Good conditions for farming today — check your calendar for scheduled activities',
+      '✓ आज खेती के लिए अच्छी स्थिति — निर्धारित कार्यों के लिए कैलेंडर देखें',
+      '✓ आज शेतीसाठी चांगल्या स्थिती — नियोजित कामांसाठी कॅलेंडर पहा',
+    );
+  }, [weatherData?.current, crops, upcomingEvents, hasCrops, language]);
 
   return (
     <Layout>
@@ -409,7 +503,7 @@ export default function Dashboard() {
                 {weatherData?.current ? (
                   <div className="flex items-end gap-6 mb-4">
                     <div className="flex items-center gap-3">
-                      {getWeatherIcon(weatherData.current.description)}
+                      {getWeatherIcon(weatherData.current.icon || weatherData.current.description)}
                       <div>
                         <div className="text-5xl font-bold">{Math.round(weatherData.current.temperature)}°C</div>
                         <div className="text-sm opacity-80 capitalize">{weatherData.current.description}</div>

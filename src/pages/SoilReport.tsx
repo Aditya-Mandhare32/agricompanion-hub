@@ -263,26 +263,31 @@ export default function SoilReport() {
       // Use browser's speech synthesis
       const utterance = new SpeechSynthesisUtterance(data.spokenText || aiAnalysis.summary);
       
-      // Set language and find the best matching voice
+      // Set language and find the best matching voice. Marathi (mr-IN) is rarely
+      // available in browsers; fall back to Hindi (intelligible to Marathi speakers)
+      // before English.
       const langCode = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
       utterance.lang = langCode;
-      
-      // Wait for voices to load and pick best match
+
       const pickVoice = () => {
         const voices = window.speechSynthesis.getVoices();
-        const exactMatch = voices.find(v => v.lang === langCode);
-        const partialMatch = voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
-        const fallback = voices.find(v => v.lang.startsWith('en'));
-        if (exactMatch) utterance.voice = exactMatch;
-        else if (partialMatch) utterance.voice = partialMatch;
-        else if (fallback) utterance.voice = fallback;
+        // Exact match (e.g. mr-IN)
+        let chosen = voices.find(v => v.lang.toLowerCase() === langCode.toLowerCase());
+        // Same-language match (e.g. mr-* )
+        if (!chosen) chosen = voices.find(v => v.lang.toLowerCase().startsWith(langCode.split('-')[0].toLowerCase()));
+        // Marathi-specific fallback chain: try Hindi voice before English
+        if (!chosen && language === 'mr') {
+          chosen = voices.find(v => v.lang.toLowerCase().startsWith('hi'));
+          if (chosen) utterance.lang = 'hi-IN';
+        }
+        if (!chosen) chosen = voices.find(v => v.lang.toLowerCase().startsWith('en'));
+        if (chosen) utterance.voice = chosen;
       };
-      
+
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
         pickVoice();
       } else {
-        // Voices may not be loaded yet
         await new Promise<void>((resolve) => {
           window.speechSynthesis.onvoiceschanged = () => { pickVoice(); resolve(); };
           setTimeout(resolve, 1000);

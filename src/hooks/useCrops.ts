@@ -50,22 +50,49 @@ export function useDeleteCrop() {
 
   return useMutation({
     mutationFn: async (cropId: string) => {
-      // Get crop name first to delete associated events
+      // Get crop name first to delete associated events + notifications
       const { data: cropData } = await supabase
         .from('crop_history')
         .select('crop_name')
         .eq('id', cropId)
         .single();
-      
-      // Delete associated calendar events
-      if (cropData?.crop_name) {
+
+      const cropName = cropData?.crop_name;
+
+      if (cropName && user?.id) {
+        // Delete associated calendar events
         await supabase
           .from('calendar_events')
           .delete()
-          .eq('user_id', user!.id)
-          .eq('crop_name', cropData.crop_name);
+          .eq('user_id', user.id)
+          .eq('crop_name', cropName);
+
+        // Delete pending/unread smart notifications that reference this crop
+        // (match by message contains crop name OR action_data.crop_name = crop name)
+        await supabase
+          .from('smart_notifications')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('read', false)
+          .ilike('message', `%${cropName}%`);
+
+        await supabase
+          .from('smart_notifications')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('read', false)
+          .ilike('title', `%${cropName}%`);
+
+        // Also clean basic notifications table if it has crop references
+        try {
+          await supabase
+            .from('notifications')
+            .delete()
+            .eq('user_id', user.id)
+            .ilike('message', `%${cropName}%`);
+        } catch {}
       }
-      
+
       // Delete crop history entry
       const { error: histError } = await supabase
         .from('crop_history')
@@ -77,7 +104,8 @@ export function useDeleteCrop() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeCrops'] });
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
-      toast.success('Crop removed successfully');
+      queryClient.invalidateQueries({ queryKey: ['smartNotifications'] });
+      toast.success('Crop and related reminders removed');
     },
     onError: (err) => {
       console.error('Delete crop error:', err);

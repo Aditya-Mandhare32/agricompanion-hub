@@ -164,7 +164,7 @@ export function Header() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl hero-gradient">
             <Leaf className="h-6 w-6 text-primary-foreground" />
           </div>
-          <span className="text-xl font-bold text-primary">Agri360</span>
+          <span className="text-xl font-bold text-primary">AI Farmer Guidance</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">

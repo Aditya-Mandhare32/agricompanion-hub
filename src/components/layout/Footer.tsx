@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, Mail, Phone, MapPin } from 'lucide-react';
+import { Leaf, MapPin, MessageCircle, Instagram, Youtube } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -13,21 +13,27 @@ export function Footer() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl hero-gradient">
                 <Leaf className="h-6 w-6 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold text-primary">Agri360</span>
+              <span className="text-xl font-bold text-primary">AI Farmer Guidance</span>
             </Link>
             <p className="text-sm text-muted-foreground">
-              AI-powered smart agriculture platform for modern farmers. Get personalized crop recommendations and fertilizer plans.
+              Helping Indian farmers grow smarter with soil-based crop guidance, farming calendars, and expert community support.
             </p>
+            <div className="flex items-center gap-3 pt-2">
+              <a href="#" aria-label="Instagram" className="text-muted-foreground hover:text-primary transition-colors"><Instagram className="h-5 w-5" /></a>
+              <a href="#" aria-label="YouTube" className="text-muted-foreground hover:text-primary transition-colors"><Youtube className="h-5 w-5" /></a>
+              <a href="#" aria-label="WhatsApp" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle className="h-5 w-5" /></a>
+            </div>
           </div>
 
           {/* Quick Links */}
           <div>
             <h4 className="font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/soil-report" className="text-muted-foreground hover:text-primary transition-colors">Soil Analysis</Link></li>
-              <li><Link to="/crops" className="text-muted-foreground hover:text-primary transition-colors">Crop Recommendations</Link></li>
+              <li><Link to="/soil-report" className="text-muted-foreground hover:text-primary transition-colors">Soil Report</Link></li>
               <li><Link to="/calendar" className="text-muted-foreground hover:text-primary transition-colors">Crop Calendar</Link></li>
               <li><Link to="/community" className="text-muted-foreground hover:text-primary transition-colors">Community</Link></li>
+              <li><Link to="/news" className="text-muted-foreground hover:text-primary transition-colors">News</Link></li>
+              <li><Link to="/dashboard" className="text-muted-foreground hover:text-primary transition-colors">Dashboard</Link></li>
             </ul>
           </div>
 
@@ -35,10 +41,11 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Resources</h4>
             <ul className="space-y-2 text-sm">
+              <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">About Us</a></li>
+              <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">FAQ</a></li>
               <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Help Center</a></li>
               <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Privacy Policy</a></li>
               <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">API Documentation</a></li>
             </ul>
           </div>
 
@@ -47,23 +54,19 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Contact</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2 text-muted-foreground">
-                <Mail className="h-4 w-4" />
-                support@agri360.com
-              </li>
-              <li className="flex items-center gap-2 text-muted-foreground">
-                <Phone className="h-4 w-4" />
-                +91 1800-123-4567
-              </li>
-              <li className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="h-4 w-4" />
+                <MapPin className="h-4 w-4 flex-shrink-0" />
                 Pune, Maharashtra, India
+              </li>
+              <li className="flex items-start gap-2 text-muted-foreground">
+                <MessageCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>For support, use the AI Assistant (Patil) available on Dashboard.</span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>© 2025 Agri360. All rights reserved. Made with ❤️ for Indian Farmers.</p>
+          <p>© 2026 AI Farmer Guidance. All rights reserved. Made with ❤️ for Indian Farmers.</p>
         </div>
       </div>
     </footer>

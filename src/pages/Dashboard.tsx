@@ -367,8 +367,6 @@ export default function Dashboard() {
   const pendingTasks = useMemo(() => tasks?.filter(t => !t.completed) || [], [tasks]);
   const completedTasks = useMemo(() => tasks?.filter(t => t.completed) || [], [tasks]);
 
-  if (cropsLoading) return <Layout><div className="container mx-auto px-4 py-8"><DashboardSkeleton /></div></Layout>;
-
   const hasCrops = (crops?.length || 0) > 0;
   // Image is derived from the language-independent icon code, so it stays
   // stable across language switches.
@@ -464,6 +462,8 @@ export default function Dashboard() {
       '✓ आज शेतीसाठी चांगल्या स्थिती — नियोजित कामांसाठी कॅलेंडर पहा',
     );
   }, [weatherData?.current, crops, upcomingEvents, hasCrops, language]);
+
+  if (cropsLoading) return <Layout><div className="container mx-auto px-4 py-8"><DashboardSkeleton /></div></Layout>;
 
   return (
     <Layout>

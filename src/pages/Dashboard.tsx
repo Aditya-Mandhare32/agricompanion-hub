@@ -463,6 +463,8 @@ export default function Dashboard() {
     );
   }, [weatherData?.current, crops, upcomingEvents, hasCrops, language]);
 
+  if (cropsLoading) return <Layout><div className="container mx-auto px-4 py-8"><DashboardSkeleton /></div></Layout>;
+
   return (
     <Layout>
       <motion.div initial="hidden" animate="visible" variants={stagger} className="container mx-auto px-4 py-6 space-y-6 max-w-7xl">

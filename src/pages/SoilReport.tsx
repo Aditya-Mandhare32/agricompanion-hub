@@ -299,7 +299,7 @@ export default function SoilReport() {
 
       utterance.rate = 0.85;
       utterance.pitch = 1.0;
-      utterance.onend = () => setIsSpeaking(false);
+      utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); };
       utterance.onerror = (e) => { console.error('Speech error:', e); setIsSpeaking(false); };
 
       setSpeechSynthesis(utterance);
@@ -313,7 +313,7 @@ export default function SoilReport() {
         const utterance = new SpeechSynthesisUtterance(fallbackText);
         utterance.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
         utterance.rate = 0.85;
-        utterance.onend = () => setIsSpeaking(false);
+        utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); };
         utterance.onerror = () => setIsSpeaking(false);
         setSpeechSynthesis(utterance);
         setIsSpeaking(true);
@@ -696,7 +696,7 @@ export default function SoilReport() {
           {aiAnalysis && soilParams && (
             <div className="space-y-6 mb-8">
               {/* Voice Explanation Button */}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={handleVoiceExplanation}
@@ -714,7 +714,34 @@ export default function SoilReport() {
                     </>
                   )}
                 </Button>
+                {isSpeaking && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (isPaused) {
+                        window.speechSynthesis.resume();
+                        setIsPaused(false);
+                      } else {
+                        window.speechSynthesis.pause();
+                        setIsPaused(true);
+                      }
+                    }}
+                  >
+                    {isPaused ? (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        {language === 'hi' ? 'जारी रखें' : language === 'mr' ? 'सुरू ठेवा' : 'Resume'}
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="h-4 w-4 mr-2" />
+                        {language === 'hi' ? 'विराम' : language === 'mr' ? 'विराम' : 'Pause'}
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
+
 
               <SoilHealthScore 
                 score={aiAnalysis.healthScore} 

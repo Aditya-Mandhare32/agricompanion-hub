@@ -1,4 +1,4 @@
-// Agri360 Service Worker — local + remote push notifications
+// AI Farmer Guidance Service Worker — local + remote push notifications
 // Intentionally NO caching strategies to avoid stale preview issues.
 
 self.addEventListener('install', (event) => {
@@ -11,7 +11,7 @@ self.addEventListener('activate', (event) => {
 
 // Remote push (server-sent). Not wired up yet but ready.
 self.addEventListener('push', (event) => {
-  let payload = { title: 'Agri360', body: 'You have a new update', url: '/dashboard' };
+  let payload = { title: 'AI Farmer Guidance', body: 'You have a new update', url: '/dashboard' };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
   } catch (_) {

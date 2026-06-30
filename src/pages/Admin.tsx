@@ -215,7 +215,7 @@ export default function Admin() {
       await supabase.from('posts').delete().eq('id', r.reported_post_id);
       await supabase.from('post_reports').update({ status: 'resolved', resolved_at: new Date().toISOString(), admin_action: 'post_deleted' }).eq('id', r.id);
       await logAdminAction(user.id, 'delete_post', r.reported_user_id, null, r.reason, { post_id: r.reported_post_id });
-      await notifyUser({ userId: r.reported_user_id, userEmail: targetEmail, title: 'Agri360 Account Notice', message: `One of your posts was removed for: ${r.reason}.` });
+      await notifyUser({ userId: r.reported_user_id, userEmail: targetEmail, title: 'AI Farmer Guidance Account Notice', message: `One of your posts was removed for: ${r.reason}.` });
     } else {
       await applyModeration({ adminId: user.id, targetUserId: r.reported_user_id, targetEmail, action, reason: r.reason });
       await supabase.from('post_reports').update({ status: 'resolved', resolved_at: new Date().toISOString(), admin_action: action }).eq('id', r.id);

@@ -73,9 +73,9 @@ export function InstallPrompt() {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium leading-tight">
-          📱 {t('Install Agri360 on your phone for quick access',
-                'त्वरित पहुंच के लिए Agri360 अपने फोन पर इंस्टॉल करें',
-                'त्वरित प्रवेशासाठी Agri360 तुमच्या फोनवर इंस्टॉल करा')}
+          📱 {t('Install AI Farmer Guidance on your phone for quick access',
+                'त्वरित पहुंच के लिए AI Farmer Guidance अपने फोन पर इंस्टॉल करें',
+                'त्वरित प्रवेशासाठी AI Farmer Guidance तुमच्या फोनवर इंस्टॉल करा')}
         </p>
       </div>
       <Button size="sm" onClick={install} className="shrink-0">

@@ -24,6 +24,8 @@ import {
   ArrowRight,
   Volume2,
   VolumeX,
+  Pause,
+  Play,
   Sparkles,
   LogIn,
   MapPin,
@@ -84,6 +86,7 @@ export default function SoilReport() {
   const [dragActive, setDragActive] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesisUtterance | null>(null);
   const [showEstimationMode, setShowEstimationMode] = useState(false);
   const [isEstimatedSoil, setIsEstimatedSoil] = useState(false);
@@ -238,6 +241,7 @@ export default function SoilReport() {
     if (isSpeaking && speechSynthesis) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
+      setIsPaused(false);
       return;
     }
 
@@ -296,7 +300,7 @@ export default function SoilReport() {
 
       utterance.rate = 0.85;
       utterance.pitch = 1.0;
-      utterance.onend = () => setIsSpeaking(false);
+      utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); };
       utterance.onerror = (e) => { console.error('Speech error:', e); setIsSpeaking(false); };
 
       setSpeechSynthesis(utterance);
@@ -310,7 +314,7 @@ export default function SoilReport() {
         const utterance = new SpeechSynthesisUtterance(fallbackText);
         utterance.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
         utterance.rate = 0.85;
-        utterance.onend = () => setIsSpeaking(false);
+        utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); };
         utterance.onerror = () => setIsSpeaking(false);
         setSpeechSynthesis(utterance);
         setIsSpeaking(true);
@@ -392,35 +396,6 @@ export default function SoilReport() {
               {showSavedAnalyses
                 ? (language === 'hi' ? 'बंद करें' : language === 'mr' ? 'बंद करा' : 'Hide History')
                 : (language === 'hi' ? 'पिछले विश्लेषण देखें' : language === 'mr' ? 'मागील विश्लेषणे पहा' : 'View Previous Analyses')}
-            </Button>
-            {/* TTS Voice Test Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-4 ml-2"
-              onClick={() => {
-                const samples: Record<string, string> = {
-                  en: 'Voice test. Recommended crops are Rice, Wheat, and Tomato. Apply 50 kilograms of urea per acre at flowering stage.',
-                  hi: 'आवाज परीक्षण। अनुशंसित फसलें हैं चावल, गेहूं और टमाटर। फूल आने के समय 50 किलो यूरिया प्रति एकड़ डालें।',
-                  mr: 'आवाज चाचणी. शिफारस केलेली पिके आहेत भात, गहू आणि टोमॅटो. फुलोरा अवस्थेत प्रति एकर 50 किलो युरिया द्या.',
-                };
-                const text = samples[language] || samples.en;
-                window.speechSynthesis.cancel();
-                const u = new SpeechSynthesisUtterance(text);
-                u.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
-                const voices = window.speechSynthesis.getVoices();
-                const match = voices.find(v => v.lang === u.lang) || voices.find(v => v.lang.startsWith(u.lang.split('-')[0]));
-                if (match) u.voice = match;
-                u.rate = 0.9;
-                window.speechSynthesis.speak(u);
-                toast.success(
-                  language === 'hi' ? `आवाज परीक्षण (${u.voice?.name || u.lang})` :
-                  language === 'mr' ? `आवाज चाचणी (${u.voice?.name || u.lang})` :
-                  `Voice test (${u.voice?.name || u.lang})`
-                );
-              }}
-            >
-              🔊 {language === 'hi' ? 'आवाज परीक्षण' : language === 'mr' ? 'आवाज चाचणी' : 'Test Voice'}
             </Button>
           </div>
 
@@ -722,7 +697,7 @@ export default function SoilReport() {
           {aiAnalysis && soilParams && (
             <div className="space-y-6 mb-8">
               {/* Voice Explanation Button */}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={handleVoiceExplanation}
@@ -740,7 +715,34 @@ export default function SoilReport() {
                     </>
                   )}
                 </Button>
+                {isSpeaking && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (isPaused) {
+                        window.speechSynthesis.resume();
+                        setIsPaused(false);
+                      } else {
+                        window.speechSynthesis.pause();
+                        setIsPaused(true);
+                      }
+                    }}
+                  >
+                    {isPaused ? (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        {language === 'hi' ? 'जारी रखें' : language === 'mr' ? 'सुरू ठेवा' : 'Resume'}
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="h-4 w-4 mr-2" />
+                        {language === 'hi' ? 'विराम' : language === 'mr' ? 'विराम' : 'Pause'}
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
+
 
               <SoilHealthScore 
                 score={aiAnalysis.healthScore} 

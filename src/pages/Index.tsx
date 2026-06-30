@@ -78,7 +78,7 @@ const testimonials = [
   {
     name: 'Ramesh Patil',
     location: 'Nashik, Maharashtra',
-    text: 'Agri360 helped me increase my grape yield by 30% with personalized fertilizer recommendations!',
+    text: 'AI Farmer Guidance helped me increase my grape yield by 30% with personalized fertilizer recommendations!',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ramesh',
     crop: 'Grapes',
   },
@@ -293,7 +293,7 @@ export default function Index() {
             <div className="container mx-auto px-4">
               <div className="text-center mb-12">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">Trusted by Farmers</h2>
-                <p className="text-muted-foreground max-w-2xl mx-auto">See what farmers across India are saying about Agri360</p>
+                <p className="text-muted-foreground max-w-2xl mx-auto">See what farmers across India are saying about AI Farmer Guidance</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
                 {testimonials.map((testimonial) => (
@@ -331,7 +331,7 @@ export default function Index() {
             <div className="container mx-auto px-4 text-center relative">
               <div className="max-w-2xl mx-auto">
                 <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">Ready to Transform Your Farm?</h2>
-                <p className="text-primary-foreground/90 mb-8 text-lg">Join thousands of farmers who are already using Agri360 to increase their yield and profits.</p>
+                <p className="text-primary-foreground/90 mb-8 text-lg">Join thousands of farmers who are already using AI Farmer Guidance to increase their yield and profits.</p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button asChild size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-lg shadow-secondary/30 text-base px-8">
                     <Link to="/signup">

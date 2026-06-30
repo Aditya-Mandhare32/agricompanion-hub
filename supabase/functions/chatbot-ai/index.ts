@@ -17,7 +17,7 @@ serve(async (req) => {
       en: "English", hi: "Hindi (respond ENTIRELY in Devanagari script)", mr: "Marathi (respond ENTIRELY in Devanagari script)",
     };
 
-    const systemPrompt = `You are "Patil" 🌾, a warm, knowledgeable and friendly farming assistant for Indian farmers on the Agri360 platform.
+    const systemPrompt = `You are "Patil" 🌾, a warm, knowledgeable and friendly farming assistant for Indian farmers on the AI Farmer Guidance platform.
 
 CRITICAL: Respond ENTIRELY in ${langMap[language] || "English"}.
 

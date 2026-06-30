@@ -84,27 +84,27 @@ export async function applyModeration(args: {
 }) {
   const messages: Record<typeof args.action, { title: string; message: string; status: UserStatusValue; days?: number }> = {
     warn: {
-      title: 'Agri360 Account Notice',
-      message: `You have received a warning from the Agri360 moderation team. Reason: ${args.reason || 'Community guidelines violation'}.`,
+      title: 'AI Farmer Guidance Account Notice',
+      message: `You have received a warning from the AI Farmer Guidance moderation team. Reason: ${args.reason || 'Community guidelines violation'}.`,
       status: 'warned',
     },
     restrict7: {
-      title: 'Agri360 Account Notice',
+      title: 'AI Farmer Guidance Account Notice',
       message: `Your account has been restricted from posting for 7 days. Reason: ${args.reason || 'Community guidelines violation'}.`,
       status: 'restricted', days: 7,
     },
     block: {
-      title: 'Agri360 Account Notice',
+      title: 'AI Farmer Guidance Account Notice',
       message: `Your account has been blocked. Reason: ${args.reason || 'Community guidelines violation'}. Contact adityamandhare28@gmail.com to appeal.`,
       status: 'blocked',
     },
     unrestrict: {
-      title: 'Agri360 Account Notice',
+      title: 'AI Farmer Guidance Account Notice',
       message: `Your account access has been restored.`,
       status: 'active',
     },
     unblock: {
-      title: 'Agri360 Account Notice',
+      title: 'AI Farmer Guidance Account Notice',
       message: `Your account access has been restored.`,
       status: 'active',
     },

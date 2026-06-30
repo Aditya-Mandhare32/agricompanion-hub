@@ -45,14 +45,14 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 export async function requestPushPermission(): Promise<NotificationPermission | 'unsupported'> {
   if (!isPushSupported()) return 'unsupported';
   if (Notification.permission === 'granted') {
-    await showLocalNotification('Agri360', 'Notifications are already enabled ✅');
+    await showLocalNotification('AI Farmer Guidance', 'Notifications are already enabled ✅');
     return 'granted';
   }
   if (Notification.permission === 'denied') return 'denied';
   const perm = await Notification.requestPermission();
   if (perm === 'granted') {
     await registerServiceWorker();
-    await showLocalNotification('Welcome to Agri360 🌱', 'You\'ll receive farm task reminders and weather alerts.');
+    await showLocalNotification('Welcome to AI Farmer Guidance 🌱', 'You\'ll receive farm task reminders and weather alerts.');
   }
   return perm;
 }

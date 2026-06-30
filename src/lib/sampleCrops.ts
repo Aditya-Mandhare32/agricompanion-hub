@@ -218,7 +218,7 @@ export function exportAsIcs(events: any[]): string {
   // Placeholder implementation
   const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Agri360//Crop Calendar//EN
+PRODID:-//AI Farmer Guidance//Crop Calendar//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 ${events.map(event => `BEGIN:VEVENT

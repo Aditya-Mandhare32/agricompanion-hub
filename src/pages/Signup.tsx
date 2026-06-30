@@ -79,7 +79,7 @@ export default function Signup() {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl hero-gradient">
               <Leaf className="h-7 w-7 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold text-primary">Agri360</span>
+            <span className="text-2xl font-bold text-primary">AI Farmer Guidance</span>
           </Link>
         </div>
 
@@ -87,7 +87,7 @@ export default function Signup() {
         <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
           <h1 className="text-2xl font-bold text-center mb-2">Create Account</h1>
           <p className="text-muted-foreground text-center mb-6">
-            Join thousands of farmers using Agri360
+            Join thousands of farmers using AI Farmer Guidance
           </p>
 
           {/* Step Indicator */}
